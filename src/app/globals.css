@@ -1,26 +1,102 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-cream: #faf3eb;
+  --bg-sand: #f1e4d5;
+  --bg-latte: #e4d0bc;
+  --ink-espresso: #3b2316;
+  --ink-mocha: #6e4b3a;
+  --ink-muted: #9a7865;
+  --accent-rosegold: #c58f70;
+  --accent-copper: #a86f50;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-cream: var(--bg-cream);
+  --color-sand: var(--bg-sand);
+  --color-latte: var(--bg-latte);
+  --color-espresso: var(--ink-espresso);
+  --color-mocha: var(--ink-mocha);
+  --color-muted: var(--ink-muted);
+  --color-rosegold: var(--accent-rosegold);
+  --color-copper: var(--accent-copper);
+  --font-serif: var(--font-cormorant), Georgia, serif;
+  --font-script: var(--font-alex-brush), cursive;
+  --font-sans: var(--font-jakarta), system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
+  background-color: var(--bg-cream);
+  color: var(--ink-espresso);
+  caret-color: var(--accent-rosegold);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-cream);
+  color: var(--ink-espresso);
+  font-family: var(--font-jakarta), system-ui, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background-color: rgba(197, 143, 112, 0.28);
+  color: #3b2316;
+}
+
+/* Custom subtle warm scrollbar */
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-cream);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d7beaa;
+  border-radius: 999px;
+  border: 2px solid var(--bg-cream);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-rosegold);
+}
+
+/* Accessible focus rings */
+:focus-visible {
+  outline: 2px solid var(--accent-rosegold);
+  outline-offset: 3px;
+}
+
+/* Editorial outline typography inspired by 2.mp4 */
+.editorial-stroke {
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(59, 35, 22, 0.42);
+  transition: color 240ms ease, -webkit-text-stroke-color 240ms ease;
+}
+
+.editorial-stroke:hover {
+  color: rgba(59, 35, 22, 0.72);
+  -webkit-text-stroke-color: rgba(59, 35, 22, 0.72);
+}
+
+.tabular-price {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

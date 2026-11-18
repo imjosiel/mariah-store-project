@@ -1,0 +1,114 @@
+// Prisma Schema preparado para Neon.tech (Serverless PostgreSQL)
+// Para ativar futuramente:
+// 1. npm install prisma @prisma/client @neondatabase/serverless
+// 2. Configurar DATABASE_URL e DIRECT_URL do Neon no .env
+// 3. npx prisma migrate dev --name init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  description String?
+  sortOrder   Int       @default(0)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id               String           @id @default(cuid())
+  slug             String           @unique
+  name             String
+  subtitle         String
+  heroWord         String           // Palavra monumental de fundo (ex: "CONFORTO", "LEVEZA", "FLUIDEZ")
+  description      String
+  fabricDetails    String           // Composição e toque do tecido
+  careInstructions String?
+  priceInCents     Int              // Preço atual em centavos (ex: 28900 = R$ 289,00)
+  compareAtInCents Int?             // Preço original riscado (ex: 35900 = R$ 359,00)
+  featuredInHero   Boolean          @default(false)
+  heroSortOrder    Int              @default(0)
+  rating           Float            @default(4.9)
+  reviewCount      Int              @default(0)
+  categoryId       String
+  category         Category         @relation(fields: [categoryId], references: [id])
+  variants         ProductVariant[]
+  orderItems       OrderItem[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+model ProductVariant {
+  id             String         @id @default(cuid())
+  productId      String
+  product        Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  colorName      String         // Ex: "Vinho Rosé", "Mocha Expresso"
+  colorSlug      String
+  swatchHex      String         // Cor exibida na bolinha seletora
+  cutoutImageUrl String         // PNG/WebP com fundo transparente (ghost mannequin)
+  galleryUrls    String[]       // Fotos adicionais / detalhes / lookbook
+  atmosphereBg   String         // Cor de fundo da atmosfera no Hero
+  atmosphereGlow String         // Iluminação radial atrás da peça
+  atmosphereText String         // Cor de contraste do texto sobre a atmosfera
+  isLightTheme   Boolean        @default(false)
+  sortOrder      Int            @default(0)
+  stocks         VariantStock[]
+  orderItems     OrderItem[]
+
+  @@unique([productId, colorSlug])
+}
+
+model VariantStock {
+  id        String         @id @default(cuid())
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  sizeLabel String         // Ex: "PP", "P", "M", "G" ou "36", "38", "40", "42"
+  stock     Int            @default(0)
+
+  @@unique([variantId, sizeLabel])
+}
+
+enum OrderStatus {
+  DRAFT_BAG
+  SENT_TO_WHATSAPP
+  CONFIRMED
+  SHIPPED
+  CANCELLED
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  code            String      @unique // Ex: "MS-4821" para referência fácil no WhatsApp
+  customerName    String?
+  customerPhone   String?
+  notes           String?
+  totalInCents    Int
+  status          OrderStatus @default(SENT_TO_WHATSAPP)
+  whatsappPayload String?     // Mensagem enviada / sincronizada
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model OrderItem {
+  id               String         @id @default(cuid())
+  orderId          String
+  order            Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product        @relation(fields: [productId], references: [id])
+  variantId        String
+  variant          ProductVariant @relation(fields: [variantId], references: [id])
+  sizeLabel        String
+  quantity         Int
+  unitPriceInCents Int
+}
