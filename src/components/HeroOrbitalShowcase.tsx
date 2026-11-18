@@ -85,19 +85,21 @@ export function HeroOrbitalShowcase({
   const goNext = () => setActiveIndex((i) => (i + 1) % len);
   const goPrev = () => setActiveIndex((i) => (i - 1 + len) % len);
 
-  // Wheel scroll interaction: scrolling on the garment spins the rack
+  // Wheel scroll & Mobile Touch Swipe interaction: scrolling or swiping on the garment spins the rack
   const showcaseRef = useRef<HTMLDivElement>(null);
+  const wasSwipingRef = useRef(false);
   const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     const el = showcaseRef.current;
     if (!el) return;
 
+    // --- Desktop Mouse Wheel ---
     let accumulatedDelta = 0;
     let resetTimer: ReturnType<typeof setTimeout> | null = null;
     let lastActionTime = 0;
     const COOLDOWN_MS = 340;
-    const ACCUMULATE_THRESHOLD = 32; // Responsive for trackpads (small delta ticks) and mouse wheels
+    const ACCUMULATE_THRESHOLD = 32;
 
     const onWheel = (e: WheelEvent) => {
       // Intercept scroll specifically over the clothes
@@ -126,9 +128,69 @@ export function HeroOrbitalShowcase({
       }
     };
 
+    // --- Mobile Touch Swipe ---
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchCurrentX = 0;
+    let touchCurrentY = 0;
+    let isHorizontalSwipe = false;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchCurrentX = touchStartX;
+      touchCurrentY = touchStartY;
+      isHorizontalSwipe = false;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      touchCurrentX = e.touches[0].clientX;
+      touchCurrentY = e.touches[0].clientY;
+
+      const diffX = touchCurrentX - touchStartX;
+      const diffY = touchCurrentY - touchStartY;
+
+      // If user is intentionally dragging horizontally across the garment
+      if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 8) {
+        isHorizontalSwipe = true;
+        if (e.cancelable) {
+          e.preventDefault(); // Stop page from jittering vertically
+        }
+      }
+    };
+
+    const onTouchEnd = () => {
+      if (!isHorizontalSwipe) return;
+
+      const diffX = touchCurrentX - touchStartX;
+      const diffY = touchCurrentY - touchStartY;
+
+      if (Math.abs(diffX) > 36 && Math.abs(diffX) > Math.abs(diffY) * 1.1) {
+        wasSwipingRef.current = true;
+        window.setTimeout(() => {
+          wasSwipingRef.current = false;
+        }, 280);
+
+        if (diffX < 0) {
+          setActiveIndex((i) => (i + 1) % len);
+        } else {
+          setActiveIndex((i) => (i - 1 + len) % len);
+        }
+      }
+    };
+
     el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+
     return () => {
       el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
       if (resetTimer) clearTimeout(resetTimer);
     };
   }, [len]);
@@ -384,11 +446,7 @@ export function HeroOrbitalShowcase({
           ref={showcaseRef}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          className="relative z-10 order-1 flex h-[340px] items-center justify-center sm:h-[430px] lg:order-2 lg:col-span-5 lg:h-[540px]"
-          onPanEnd={(_, info) => {
-            if (info.offset.x < -50) goNext();
-            else if (info.offset.x > 50) goPrev();
-          }}
+          className="relative z-10 order-1 flex h-[340px] items-center justify-center touch-pan-y select-none sm:h-[430px] lg:order-2 lg:col-span-5 lg:h-[540px]"
         >
           {/* Monumental Background Serif Word inspired by 1.mp4 */}
           <AnimatePresence mode="wait">
@@ -456,7 +514,9 @@ export function HeroOrbitalShowcase({
               <motion.button
                 key={product.id}
                 type="button"
-                onClick={onClick}
+                onClick={() => {
+                  if (!wasSwipingRef.current) onClick();
+                }}
                 aria-label={label}
                 initial={false}
                 animate={targetState}

@@ -108,13 +108,15 @@ export function EditorialCatalog({
     setDetailProductId(null);
   };
 
-  // Wheel scroll interaction: scrolling on the passarela garments spins the carousel
+  // Wheel scroll & Mobile Touch Swipe interaction: scrolling or swiping on the passarela garments spins the carousel
   const passarelaRef = useRef<HTMLDivElement>(null);
+  const wasSwipingPassarelaRef = useRef(false);
 
   useEffect(() => {
     const el = passarelaRef.current;
     if (!el || filteredProducts.length <= 1) return;
 
+    // --- Desktop Mouse Wheel ---
     let accumulatedDelta = 0;
     let resetTimer: ReturnType<typeof setTimeout> | null = null;
     let lastActionTime = 0;
@@ -149,9 +151,68 @@ export function EditorialCatalog({
       }
     };
 
+    // --- Mobile Touch Swipe ---
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchCurrentX = 0;
+    let touchCurrentY = 0;
+    let isHorizontalSwipe = false;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchCurrentX = touchStartX;
+      touchCurrentY = touchStartY;
+      isHorizontalSwipe = false;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      touchCurrentX = e.touches[0].clientX;
+      touchCurrentY = e.touches[0].clientY;
+
+      const diffX = touchCurrentX - touchStartX;
+      const diffY = touchCurrentY - touchStartY;
+
+      if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 8) {
+        isHorizontalSwipe = true;
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+      }
+    };
+
+    const onTouchEnd = () => {
+      if (!isHorizontalSwipe) return;
+
+      const diffX = touchCurrentX - touchStartX;
+      const diffY = touchCurrentY - touchStartY;
+
+      if (Math.abs(diffX) > 36 && Math.abs(diffX) > Math.abs(diffY) * 1.1) {
+        wasSwipingPassarelaRef.current = true;
+        window.setTimeout(() => {
+          wasSwipingPassarelaRef.current = false;
+        }, 280);
+
+        if (diffX < 0) {
+          setCarouselIndex((i) => (i + 1) % total);
+        } else {
+          setCarouselIndex((i) => (i - 1 + total) % total);
+        }
+      }
+    };
+
     el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+
     return () => {
       el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
       if (resetTimer) clearTimeout(resetTimer);
     };
   }, [filteredProducts.length]);
@@ -760,7 +821,7 @@ export function EditorialCatalog({
                             {/* Floating Garments Stage with Depth-of-Field Blur */}
                             <div
                               ref={passarelaRef}
-                              className="relative flex h-[320px] w-full items-center justify-center sm:h-[390px]"
+                              className="relative flex h-[320px] w-full items-center justify-center touch-pan-y select-none sm:h-[390px]"
                             >
                               {/* Left Blurred Neighbor */}
                               {leftProd && total > 1 && (
@@ -795,9 +856,11 @@ export function EditorialCatalog({
                                   stiffness: 230,
                                   damping: 26,
                                 }}
-                                onClick={() =>
-                                  openDetail(centerProd, centerVar.id)
-                                }
+                                onClick={() => {
+                                  if (!wasSwipingPassarelaRef.current) {
+                                    openDetail(centerProd, centerVar.id);
+                                  }
+                                }}
                                 aria-label={`Inspecionar ${centerProd.name}`}
                                 className="relative z-20 flex h-[300px] w-[260px] cursor-pointer items-center justify-center transition-transform duration-300 hover:-translate-y-1.5 sm:h-[370px] sm:w-[320px]"
                               >
