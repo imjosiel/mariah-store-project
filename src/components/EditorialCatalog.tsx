@@ -17,6 +17,8 @@ import {
 import { CATEGORIES, formatBRL } from "@/data/catalog";
 import { CategorySlug, Product, ProductVariant } from "@/types/store";
 import { useBag } from "@/context/BagContext";
+import { liveStock } from "@/domain/stock";
+import { useStockLevels } from "@/lib/useStock";
 
 interface EditorialCatalogProps {
   products: Product[];
@@ -30,6 +32,9 @@ export function EditorialCatalog({
   inspectedRequest,
 }: EditorialCatalogProps) {
   const { addItem } = useBag();
+  const stockLevels = useStockLevels();
+  const stockOf = (variantId: string, sizeLabel: string, fallback: number) =>
+    liveStock(stockLevels.levels, variantId, sizeLabel, fallback);
 
   const [activeCategory, setActiveCategory] = useState<CategorySlug>("todas");
   const [viewMode, setViewMode] = useState<ViewMode>("carousel");
@@ -46,15 +51,23 @@ export function EditorialCatalog({
     Object.fromEntries(
       products.map((p) => [
         p.id,
-        p.variants[0].stocks.find((s) => s.stock > 0)?.sizeLabel ??
+        p.variants[0].stocks.find(
+          (s) => stockOf(p.variants[0].id, s.sizeLabel, s.stock) > 0
+        )?.sizeLabel ??
           p.variants[0].stocks[0].sizeLabel,
       ])
     )
   );
 
-  // Respond when user clicks "Ver detalhes da peça" from Hero
-  useEffect(() => {
-    if (!inspectedRequest) return;
+  // Respond when user clicks "Ver detalhes da peça" from Hero.
+  // Padrão recomendado pelo React para "ajustar estado quando props mudam":
+  // comparar com o valor anterior e atualizar durante o render (sem useEffect).
+  const [lastInspectedNonce, setLastInspectedNonce] = useState<number | null>(
+    inspectedRequest?.nonce ?? null
+  );
+
+  if (inspectedRequest && inspectedRequest.nonce !== lastInspectedNonce) {
+    setLastInspectedNonce(inspectedRequest.nonce);
     if (inspectedRequest.variantId) {
       setVariantMap((prev) => ({
         ...prev,
@@ -63,7 +76,7 @@ export function EditorialCatalog({
     }
     setDetailProductId(inspectedRequest.productId);
     setZoomedDetail(false);
-  }, [inspectedRequest]);
+  }
 
   const filteredProducts = useMemo(() => {
     if (activeCategory === "todas") return products;
@@ -81,11 +94,15 @@ export function EditorialCatalog({
 
   const getSelectedSize = (product: Product, variant: ProductVariant): string => {
     const chosen = sizeMap[product.id];
-    const valid = variant.stocks.find((s) => s.sizeLabel === chosen && s.stock > 0);
+    const valid = variant.stocks.find(
+      (s) =>
+        s.sizeLabel === chosen && stockOf(variant.id, s.sizeLabel, s.stock) > 0
+    );
     if (valid) return chosen;
     return (
-      variant.stocks.find((s) => s.stock > 0)?.sizeLabel ??
-      variant.stocks[0].sizeLabel
+      variant.stocks.find(
+        (s) => stockOf(variant.id, s.sizeLabel, s.stock) > 0
+      )?.sizeLabel ?? variant.stocks[0].sizeLabel
     );
   };
 
@@ -306,9 +323,11 @@ export function EditorialCatalog({
                 {(() => {
                   const variant = getVariant(detailProduct);
                   const chosenSize = getSelectedSize(detailProduct, variant);
-                  const chosenStock =
-                    variant.stocks.find((s) => s.sizeLabel === chosenSize)
-                      ?.stock ?? 0;
+                  const chosenStock = stockOf(
+                    variant.id,
+                    chosenSize,
+                    variant.stocks.find((s) => s.sizeLabel === chosenSize)?.stock ?? 0
+                  );
 
                   const whatsappQuestionText = encodeURIComponent(
                     `Olá, Maria's Store! Tenho interesse na peça *${detailProduct.name}* na cor *${variant.colorName}* (Tam ${chosenSize}). Poderia me ajudar?`
@@ -513,7 +532,8 @@ export function EditorialCatalog({
                           <div className="mt-2.5 flex flex-wrap gap-2.5">
                             {variant.stocks.map(({ sizeLabel, stock }) => {
                               const isSelected = chosenSize === sizeLabel;
-                              const isOut = stock === 0;
+                              const isOut =
+                                stockOf(variant.id, sizeLabel, stock) === 0;
                               return (
                                 <button
                                   key={sizeLabel}

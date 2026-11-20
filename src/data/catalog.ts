@@ -26,6 +26,7 @@ export const PRODUCTS: Product[] = [
       "Envio em até 24h úteis para todo o Brasil. Primeira troca gratuita em até 30 dias após o recebimento.",
     priceInCents: 34900,
     compareAtInCents: 42900,
+    costInCents: 17500, // placeholder do mock — custo real vem do cadastro no admin
     featuredInHero: true,
     rating: 4.9,
     reviewCount: 34,
@@ -126,6 +127,7 @@ export const PRODUCTS: Product[] = [
       "Envio em até 24h úteis. Acompanha cabide protetor da Maria's Store.",
     priceInCents: 38900,
     compareAtInCents: 45900,
+    costInCents: 19500, // placeholder do mock — custo real vem do cadastro no admin
     featuredInHero: true,
     rating: 5.0,
     reviewCount: 41,
@@ -226,6 +228,7 @@ export const PRODUCTS: Product[] = [
       "Envio em embalagem perfumada com papel de seda exclusivo Maria's Store.",
     priceInCents: 31900,
     compareAtInCents: null,
+    costInCents: 16000, // placeholder do mock — custo real vem do cadastro no admin
     featuredInHero: true,
     rating: 4.9,
     reviewCount: 28,
@@ -300,6 +303,7 @@ export const PRODUCTS: Product[] = [
       "Envio imediato em até 24h úteis. Primeira troca grátis em até 30 dias.",
     priceInCents: 25900,
     compareAtInCents: 29900,
+    costInCents: 13000, // placeholder do mock — custo real vem do cadastro no admin
     featuredInHero: true,
     rating: 4.8,
     reviewCount: 19,
@@ -354,6 +358,7 @@ export const PRODUCTS: Product[] = [
       "Envio em até 24h úteis. Barra com margem extra caso deseje ajustar à sua altura.",
     priceInCents: 27900,
     compareAtInCents: null,
+    costInCents: 14000, // placeholder do mock — custo real vem do cadastro no admin
     featuredInHero: false,
     rating: 4.9,
     reviewCount: 24,
@@ -410,6 +415,7 @@ export const PRODUCTS: Product[] = [
       "Acompanha dust bag de algodão cru com selo Maria's Store.",
     priceInCents: 41900,
     compareAtInCents: 48900,
+    costInCents: 21000, // placeholder do mock — custo real vem do cadastro no admin
     featuredInHero: true,
     rating: 5.0,
     reviewCount: 16,

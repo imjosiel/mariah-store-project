@@ -1,11 +1,27 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { BagItem, Product, ProductVariant } from "@/types/store";
 import { formatBRL } from "@/data/catalog";
+import {
+  clearBag as clearBagStore,
+  getOrderCode,
+  getServerSnapshot,
+  getSnapshot,
+  subscribe,
+  updateBag,
+} from "@/lib/bagStore";
+import { getStockLevel } from "@/lib/stockStore";
+import { createOrderAction } from "@/order-actions";
 
 interface BagContextValue {
-  items: BagItem[];
+  items: readonly BagItem[];
   isOpen: boolean;
   toastMessage: string | null;
   totalItems: number;
@@ -17,42 +33,15 @@ interface BagContextValue {
   removeItem: (key: string) => void;
   clearBag: () => void;
   buildOrderSummaryText: (customerName?: string) => string;
+  registerCurrentOrder: (customerName?: string) => Promise<void>;
 }
 
 const BagContext = createContext<BagContextValue | undefined>(undefined);
 
-const STORAGE_KEY = "marias-store:bag:v1";
-
 export function BagProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<BagItem[]>([]);
+  const items = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [isOpen, setIsOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          setItems(parsed);
-        }
-      }
-    } catch {
-      // Ignore invalid localStorage state
-    } finally {
-      setHydrated(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    } catch {
-      // Ignore storage quota issues
-    }
-  }, [items, hydrated]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -62,8 +51,15 @@ export function BagProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addItem = (product: Product, variant: ProductVariant, sizeLabel: string) => {
+    const fallbackStock = variant.stocks.find((s) => s.sizeLabel === sizeLabel)?.stock ?? 0;
+    if (getStockLevel(variant.id, sizeLabel, fallbackStock) <= 0) {
+      showToast(`${product.name} (${sizeLabel}) está esgotado`);
+      setIsOpen(true);
+      return;
+    }
+
     const key = `${product.id}:${variant.id}:${sizeLabel}`;
-    setItems((prev) => {
+    updateBag((prev) => {
       const existing = prev.find((item) => item.key === key);
       if (existing) {
         return prev.map((item) =>
@@ -83,6 +79,8 @@ export function BagProvider({ children }: { children: React.ReactNode }) {
           cutoutImageUrl: variant.cutoutImageUrl,
           sizeLabel,
           unitPriceInCents: product.priceInCents,
+          // Custo definitivo é lido do banco na criação do pedido.
+          unitCostInCents: product.costInCents,
           quantity: 1,
         },
       ];
@@ -92,20 +90,26 @@ export function BagProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateQuantity = (key: string, delta: number) => {
-    setItems((prev) =>
+    updateBag((prev) =>
       prev
-        .map((item) =>
-          item.key === key ? { ...item, quantity: item.quantity + delta } : item
-        )
+        .map((item) => {
+          if (item.key !== key) return item;
+          const cap = getStockLevel(
+            item.variantId,
+            item.sizeLabel,
+            Math.max(item.quantity, 1)
+          );
+          return { ...item, quantity: Math.min(item.quantity + delta, cap) };
+        })
         .filter((item) => item.quantity > 0)
     );
   };
 
   const removeItem = (key: string) => {
-    setItems((prev) => prev.filter((item) => item.key !== key));
+    updateBag((prev) => prev.filter((item) => item.key !== key));
   };
 
-  const clearBag = () => setItems([]);
+  const clearBag = () => clearBagStore();
 
   const totalItems = useMemo(
     () => items.reduce((acc, item) => acc + item.quantity, 0),
@@ -118,7 +122,7 @@ export function BagProvider({ children }: { children: React.ReactNode }) {
   );
 
   const buildOrderSummaryText = (customerName?: string) => {
-    const refCode = `MS-${String((subtotalInCents / 100 + totalItems * 37) % 9000 + 1000).slice(0, 4)}`;
+    const refCode = getOrderCode();
     const greeting = customerName?.trim()
       ? `Olá, Maria's Store! Sou *${customerName.trim()}* e gostaria de finalizar minha sacola (*#${refCode}*):`
       : `Olá, Maria's Store! Gostaria de finalizar minha sacola (*#${refCode}*):`;
@@ -140,6 +144,19 @@ export function BagProvider({ children }: { children: React.ReactNode }) {
     ].join("\n");
   };
 
+  const registerCurrentOrder = async (customerName?: string) => {
+    if (items.length === 0) return;
+    try {
+      await createOrderAction(
+        items,
+        customerName ?? "",
+        buildOrderSummaryText(customerName)
+      );
+    } catch {
+      showToast("Não foi possível salvar o pedido no banco");
+    }
+  };
+
   const value: BagContextValue = {
     items,
     isOpen,
@@ -153,6 +170,7 @@ export function BagProvider({ children }: { children: React.ReactNode }) {
     removeItem,
     clearBag,
     buildOrderSummaryText,
+    registerCurrentOrder,
   };
 
   return <BagContext.Provider value={value}>{children}</BagContext.Provider>;

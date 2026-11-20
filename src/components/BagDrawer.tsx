@@ -27,12 +27,14 @@ export function BagDrawer() {
     updateQuantity,
     removeItem,
     buildOrderSummaryText,
+    registerCurrentOrder,
   } = useBag();
 
   const [customerName, setCustomerName] = useState("");
   const [copied, setCopied] = useState(false);
 
   const handleCopyOrder = async () => {
+    void registerCurrentOrder(customerName);
     try {
       await navigator.clipboard.writeText(buildOrderSummaryText(customerName));
       setCopied(true);
@@ -248,6 +250,7 @@ export function BagDrawer() {
                       href={whatsappHref}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={() => void registerCurrentOrder(customerName)}
                       className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-espresso px-6 py-3.5 text-sm font-semibold text-cream shadow-md transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.98]"
                     >
                       <MessageCircle className="h-4 w-4" strokeWidth={1.9} />

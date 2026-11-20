@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Skills instaladas em .agent/ são ferramentas, não código do app.
+    ".agent/**",
+    // Projeto externo presente na raiz — fora do escopo deste app.
+    "msixvcdl-expressjs/**",
   ]),
 ]);
 

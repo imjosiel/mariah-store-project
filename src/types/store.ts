@@ -60,6 +60,8 @@ export interface Product {
   deliveryInfo: string;
   priceInCents: number;
   compareAtInCents: number | null;
+  costInCents: number;              // base da comissão de 10% — ver docs/07
+  ncm?: string;                     // opcional (só interestadual, fora do escopo)
   featuredInHero: boolean;
   rating: number;
   reviewCount: number;
@@ -79,5 +81,6 @@ export interface BagItem {
   cutoutImageUrl: string;
   sizeLabel: string;
   unitPriceInCents: number;
+  unitCostInCents: number; // custo da peça — base dos 10% (docs/07)
   quantity: number;
 }

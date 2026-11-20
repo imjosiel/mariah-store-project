@@ -36,6 +36,8 @@ model Product {
   careInstructions String?
   priceInCents     Int              // Preço atual em centavos (ex: 28900 = R$ 289,00)
   compareAtInCents Int?             // Preço original riscado (ex: 35900 = R$ 359,00)
+  costInCents      Int              // Custo da peça — base da comissão de 10% (docs/07)
+  ncm              String?          // Opcional: só obrigatório em operação interestadual (fora do escopo)
   featuredInHero   Boolean          @default(false)
   heroSortOrder    Int              @default(0)
   rating           Float            @default(4.9)
@@ -78,6 +80,13 @@ model VariantStock {
   @@unique([variantId, sizeLabel])
 }
 
+model Admin {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  isSuper   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
 enum OrderStatus {
   DRAFT_BAG
   SENT_TO_WHATSAPP
@@ -86,18 +95,33 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum CommissionStatus {
+  PENDING     // aguardando prazo de arrependimento (7 dias)
+  PAYABLE     // liberado para repasse
+  PAID        // repassado ao desenvolvedor
+  REVERSED    // pedido cancelado/devolvido dentro do prazo
+}
+
 model Order {
-  id              String      @id @default(cuid())
-  code            String      @unique // Ex: "MS-4821" para referência fácil no WhatsApp
-  customerName    String?
-  customerPhone   String?
-  notes           String?
-  totalInCents    Int
-  status          OrderStatus @default(SENT_TO_WHATSAPP)
-  whatsappPayload String?     // Mensagem enviada / sincronizada
-  items           OrderItem[]
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id                     String           @id @default(cuid())
+  code                   String           @unique // MS-xxxx gerado na criação, nunca derivado do subtotal
+  customerName           String?
+  customerPhone          String?
+  notes                  String?
+  totalInCents           Int
+  status                 OrderStatus      @default(SENT_TO_WHATSAPP)
+  whatsappPayload        String?          // Mensagem enviada / sincronizada
+  confirmedAt            DateTime?
+  nfNumber               String?          // preenchido manualmente após emissão na NFF
+  cfop                   String           @default("5.102") // 5.101 produção própria | 5.102 revenda
+  commissionBps          Int              @default(1000)    // 10%
+  commissionInCents      Int              @default(0)
+  commissionStatus       CommissionStatus @default(PENDING)
+  commissionAvailableAt  DateTime?        // confirmedAt + 7 dias (CDC art. 49)
+  stockShortfalls        String[]         @default([])
+  items                  OrderItem[]
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
 }
 
 model OrderItem {
@@ -110,5 +134,8 @@ model OrderItem {
   variant          ProductVariant @relation(fields: [variantId], references: [id])
   sizeLabel        String
   quantity         Int
+  productName      String
+  colorName        String
   unitPriceInCents Int
+  unitCostInCents  Int
 }

@@ -1,52 +1,13 @@
-"use client";
+import { connection } from "next/server";
 
-import React, { useMemo, useState } from "react";
-import { PRODUCTS } from "@/data/catalog";
-import { Product } from "@/types/store";
-import { HeroOrbitalShowcase } from "@/components/HeroOrbitalShowcase";
-import { EditorialCatalog } from "@/components/EditorialCatalog";
-import { BrandEssenceSection } from "@/components/BrandEssenceSection";
-import { BagDrawer } from "@/components/BagDrawer";
+import { getProductsFromDb } from "@/lib/catalogDb";
 
-export default function HomePage() {
-  const heroProducts = useMemo(
-    () => PRODUCTS.filter((p) => p.featuredInHero),
-    []
-  );
+import { HomeClient } from "./HomeClient";
 
-  const [inspectedRequest, setInspectedRequest] = useState<{
-    productId: string;
-    variantId?: string;
-    nonce: number;
-  } | null>(null);
+export const instant = false;
 
-  const handleInspectFromHero = (product: Product, variantId: string) => {
-    setInspectedRequest({
-      productId: product.id,
-      variantId,
-      nonce: Date.now(),
-    });
-    const el = document.getElementById("catalogo");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  };
-
-  return (
-    <main id="conteudo-principal" className="relative min-h-screen w-full">
-      <HeroOrbitalShowcase
-        products={heroProducts}
-        onInspectProduct={handleInspectFromHero}
-      />
-
-      <EditorialCatalog
-        products={PRODUCTS}
-        inspectedRequest={inspectedRequest}
-      />
-
-      <BrandEssenceSection />
-
-      <BagDrawer />
-    </main>
-  );
+export default async function HomePage() {
+  await connection();
+  const products = await getProductsFromDb();
+  return <HomeClient products={products} />;
 }

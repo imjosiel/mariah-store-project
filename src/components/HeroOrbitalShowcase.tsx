@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useCallback, useMemo, useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -13,6 +13,8 @@ import {
 import { Product, ProductVariant } from "@/types/store";
 import { formatBRL } from "@/data/catalog";
 import { useBag } from "@/context/BagContext";
+import { liveStock } from "@/domain/stock";
+import { useStockLevels } from "@/lib/useStock";
 
 interface HeroOrbitalShowcaseProps {
   products: Product[];
@@ -24,6 +26,12 @@ export function HeroOrbitalShowcase({
   onInspectProduct,
 }: HeroOrbitalShowcaseProps) {
   const { addItem, openBag, totalItems } = useBag();
+  const stockLevels = useStockLevels();
+  const stockOf = useCallback(
+    (variantId: string, sizeLabel: string, fallback: number) =>
+      liveStock(stockLevels.levels, variantId, sizeLabel, fallback),
+    [stockLevels]
+  );
   const [activeIndex, setActiveIndex] = useState(0);
 
   // Track chosen variant and size per product so switching back remembers choices
@@ -35,7 +43,9 @@ export function HeroOrbitalShowcase({
     Object.fromEntries(
       products.map((p) => {
         const firstAvailable =
-          p.variants[0].stocks.find((s) => s.stock > 0)?.sizeLabel ??
+          p.variants[0].stocks.find(
+            (s) => stockOf(p.variants[0].id, s.sizeLabel, s.stock) > 0
+          )?.sizeLabel ??
           p.variants[0].stocks[0].sizeLabel;
         return [p.id, firstAvailable];
       })
@@ -61,21 +71,31 @@ export function HeroOrbitalShowcase({
   const selectedSize = useMemo(() => {
     const current = sizeMap[activeProduct.id];
     const stockEntry = activeVariant.stocks.find((s) => s.sizeLabel === current);
-    if (stockEntry && stockEntry.stock > 0) return current;
+    if (
+      stockEntry &&
+      stockOf(activeVariant.id, current, stockEntry.stock) > 0
+    ) {
+      return current;
+    }
     return (
-      activeVariant.stocks.find((s) => s.stock > 0)?.sizeLabel ??
-      activeVariant.stocks[0].sizeLabel
+      activeVariant.stocks.find(
+        (s) => stockOf(activeVariant.id, s.sizeLabel, s.stock) > 0
+      )?.sizeLabel ?? activeVariant.stocks[0].sizeLabel
     );
-  }, [activeProduct.id, activeVariant, sizeMap]);
+  }, [activeProduct.id, activeVariant, sizeMap, stockOf]);
 
   const handleSelectVariant = (variant: ProductVariant) => {
     setVariantMap((prev) => ({ ...prev, [activeProduct.id]: variant.id }));
     const currentSize = sizeMap[activeProduct.id];
     const stillInStock = variant.stocks.find(
-      (s) => s.sizeLabel === currentSize && s.stock > 0
+      (s) =>
+        s.sizeLabel === currentSize &&
+        stockOf(variant.id, s.sizeLabel, s.stock) > 0
     );
     if (!stillInStock) {
-      const fallback = variant.stocks.find((s) => s.stock > 0)?.sizeLabel;
+      const fallback = variant.stocks.find(
+        (s) => stockOf(variant.id, s.sizeLabel, s.stock) > 0
+      )?.sizeLabel;
       if (fallback) {
         setSizeMap((prev) => ({ ...prev, [activeProduct.id]: fallback }));
       }
@@ -664,7 +684,8 @@ export function HeroOrbitalShowcase({
             >
               {activeVariant.stocks.map(({ sizeLabel, stock }) => {
                 const isSelected = selectedSize === sizeLabel;
-                const isOut = stock === 0;
+                const isOut =
+                  stockOf(activeVariant.id, sizeLabel, stock) === 0;
                 return (
                   <button
                     key={sizeLabel}
