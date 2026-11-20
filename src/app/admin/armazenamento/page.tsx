@@ -1,9 +1,13 @@
+import { connection } from "next/server";
+
 import { StorageClient } from "./StorageClient";
 import { getStorageStatus, StorageError } from "@/lib/r2Store";
 
 export const instant = false;
 
 export default async function ArmazenamentoPage() {
+  await connection();
+
   let status: Awaited<ReturnType<typeof getStorageStatus>> | null = null;
   let error: string | null = null;
 
