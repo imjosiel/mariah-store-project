@@ -1,11 +1,64 @@
+import type { Prisma } from "@prisma/client";
+
 import { PRODUCTS } from "@/data/catalog";
 
 import { prisma } from "./prisma";
 
 /**
- * Custos no Postgres (Fase 2). O catálogo define nome/preço/imagem;
- * o custo editável mora em Product.costInCents.
+ * Dados editáveis dos produtos no Postgres (Fase 2).
+ * O catálogo define nome/imagem/categorias; preço, custo e estoque são
+ * operacionais e vivem no banco.
  */
+
+export interface AdminProductRow {
+  slug: string;
+  name: string;
+  categoryName: string;
+  imageUrl: string;
+  priceInCents: number;
+  costInCents: number;
+  variants: Array<{
+    colorSlug: string;
+    colorName: string;
+    stocks: Array<{ sizeLabel: string; stock: number }>;
+  }>;
+}
+
+export interface ProductUpdate {
+  slug: string;
+  priceInCents: number;
+  costInCents: number;
+  stocks: Array<{ colorSlug: string; sizeLabel: string; stock: number }>;
+}
+
+export async function getAdminProducts(): Promise<AdminProductRow[]> {
+  const rows = await prisma.product.findMany({
+    include: {
+      category: { select: { name: true } },
+      variants: {
+        include: { stocks: true },
+        orderBy: { sortOrder: "asc" },
+      },
+    },
+    orderBy: { name: "asc" },
+  });
+
+  return rows.map((row) => ({
+    slug: row.slug,
+    name: row.name,
+    categoryName: row.category.name,
+    imageUrl: row.variants[0]?.cutoutImageUrl ?? "",
+    priceInCents: row.priceInCents,
+    costInCents: row.costInCents,
+    variants: row.variants.map((variant) => ({
+      colorSlug: variant.colorSlug,
+      colorName: variant.colorName,
+      stocks: variant.stocks
+        .map((stock) => ({ sizeLabel: stock.sizeLabel, stock: stock.stock }))
+        .sort((a, b) => a.sizeLabel.localeCompare(b.sizeLabel)),
+    })),
+  }));
+}
 
 export async function getProductCosts(): Promise<Record<string, number>> {
   const rows = await prisma.product.findMany({
@@ -14,38 +67,54 @@ export async function getProductCosts(): Promise<Record<string, number>> {
   return Object.fromEntries(rows.map((row) => [row.slug, row.costInCents]));
 }
 
-/** slug do catálogo → id do banco (para salvar pelo slug vindo do formulário). */
-async function slugToId(): Promise<Record<string, string>> {
-  const rows = await prisma.product.findMany({
+export async function saveProducts(updates: readonly ProductUpdate[]): Promise<void> {
+  const products = await prisma.product.findMany({
     select: { id: true, slug: true },
   });
-  return Object.fromEntries(rows.map((row) => [row.slug, row.id]));
+  const idBySlug = new Map(products.map((product) => [product.slug, product.id]));
+
+  const operations: Prisma.PrismaPromise<unknown>[] = [];
+  for (const update of updates) {
+    const id = idBySlug.get(update.slug);
+    if (!id) continue;
+
+    operations.push(
+      prisma.product.update({
+        where: { id },
+        data: { priceInCents: update.priceInCents, costInCents: update.costInCents },
+      })
+    );
+
+    for (const stock of update.stocks) {
+      const variant = await prisma.productVariant.findFirst({
+        where: { productId: id, colorSlug: stock.colorSlug },
+        select: { id: true },
+      });
+      if (!variant) continue;
+      operations.push(
+        prisma.variantStock.updateMany({
+          where: { variantId: variant.id, sizeLabel: stock.sizeLabel },
+          data: { stock: stock.stock },
+        })
+      );
+    }
+  }
+
+  await prisma.$transaction(operations);
 }
 
-export async function saveProductCosts(costs: Record<string, number>): Promise<void> {
-  const ids = await slugToId();
-  const entries = Object.entries(costs).filter(([slug, value]) =>
-    ids[slug] && Number.isFinite(value) && value >= 0
-  );
-
-  await prisma.$transaction(
-    entries.map(([slug, value]) =>
-      prisma.product.update({
-        where: { id: ids[slug] },
-        data: { costInCents: value },
-      })
-    )
-  );
-}
-
-export async function resetProductCosts(): Promise<void> {
-  const ids = await slugToId();
-  await prisma.$transaction(
-    PRODUCTS.map((product) =>
-      prisma.product.update({
-        where: { id: ids[product.slug] },
-        data: { costInCents: product.costInCents },
-      })
-    )
-  );
+export async function resetProducts(): Promise<void> {
+  const updates: ProductUpdate[] = PRODUCTS.map((product) => ({
+    slug: product.slug,
+    priceInCents: product.priceInCents,
+    costInCents: product.costInCents,
+    stocks: product.variants.flatMap((variant) =>
+      variant.stocks.map((stock) => ({
+        colorSlug: variant.colorSlug,
+        sizeLabel: stock.sizeLabel,
+        stock: stock.stock,
+      }))
+    ),
+  }));
+  await saveProducts(updates);
 }
