@@ -105,6 +105,13 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Link
+              href="/admin/produtos/novo"
+              className="inline-flex items-center gap-1.5 rounded-full bg-copper px-4 py-2 text-[11px] font-semibold text-cream transition-transform hover:-translate-y-0.5"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Nova peça
+            </Link>
             <form action={resetProductsAction}>
               <button
                 type="submit"

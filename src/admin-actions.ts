@@ -1,17 +1,21 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { canManageAdmins } from "@/domain/admin-access";
+import { reaisToCents } from "@/domain/money";
 import {
   addAdminEmail,
   getSuperAdminEmail,
   removeAdminEmail,
 } from "@/lib/adminStore";
 import {
+  createProduct,
   resetProducts,
   saveProducts,
+  type NewProductInput,
   type ProductUpdate,
 } from "@/lib/productStore";
 
@@ -77,6 +81,84 @@ export async function saveProductsAction(
   } catch {
     return { message: "Não foi possível salvar." };
   }
+}
+
+export async function createProductAction(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  if (!(await isSuperAdmin())) return { message: "Acesso negado." };
+
+  const required = [
+    "slug",
+    "name",
+    "subtitle",
+    "heroWord",
+    "description",
+    "fabricDetails",
+    "categorySlug",
+    "colorName",
+    "colorSlug",
+    "swatchHex",
+    "cutoutImageUrl",
+  ];
+  const values: Record<string, string> = {};
+  for (const key of required) {
+    const value = String(formData.get(key) ?? "").trim();
+    if (!value) return { message: `Preencha ${key}.` };
+    values[key] = value;
+  }
+
+  const priceInCents = reaisToCents(String(formData.get("price") ?? ""));
+  const costInCents = reaisToCents(String(formData.get("cost") ?? ""));
+  if (priceInCents === null || costInCents === null) {
+    return { message: "Preço ou custo inválido." };
+  }
+
+  const stocksRaw = String(formData.get("stocks") ?? "");
+  const stocks: NewProductInput["variant"]["stocks"] = [];
+  for (const part of stocksRaw.split(",")) {
+    const [sizeLabel, rawQty] = part.split(":").map((item) => item?.trim());
+    if (!sizeLabel || rawQty === undefined) continue;
+    const stock = Number(rawQty);
+    if (!Number.isInteger(stock) || stock < 0) return { message: "Estoque inválido." };
+    stocks.push({ sizeLabel, stock });
+  }
+  if (stocks.length === 0) return { message: "Informe ao menos um tamanho." };
+
+  try {
+    await createProduct({
+      slug: values.slug,
+      name: values.name,
+      subtitle: values.subtitle,
+      heroWord: values.heroWord,
+      description: values.description,
+      fabricDetails: values.fabricDetails,
+      careInstructions: String(formData.get("careInstructions") ?? "").trim() || undefined,
+      priceInCents,
+      costInCents,
+      categorySlug: values.categorySlug,
+      featuredInHero: formData.get("featuredInHero") === "on",
+      variant: {
+        colorName: values.colorName,
+        colorSlug: values.colorSlug,
+        swatchHex: values.swatchHex,
+        cutoutImageUrl: values.cutoutImageUrl,
+        atmosphereBg: String(formData.get("atmosphereBg") ?? "#FAF3EB"),
+        atmosphereGlow: String(formData.get("atmosphereGlow") ?? "#FFFDF9"),
+        atmosphereText: String(formData.get("atmosphereText") ?? "#3B2316"),
+        isLightTheme: formData.get("isLightTheme") === "on",
+        stocks,
+      },
+    });
+  } catch (error) {
+    return {
+      message: error instanceof Error ? error.message : "Não foi possível criar a peça.",
+    };
+  }
+
+  revalidatePath("/admin/produtos");
+  redirect("/admin/produtos");
 }
 
 export async function resetProductsAction(): Promise<void> {

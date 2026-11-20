@@ -103,6 +103,79 @@ export async function saveProducts(updates: readonly ProductUpdate[]): Promise<v
   await prisma.$transaction(operations);
 }
 
+export interface NewProductInput {
+  slug: string;
+  name: string;
+  subtitle: string;
+  heroWord: string;
+  description: string;
+  fabricDetails: string;
+  careInstructions?: string;
+  priceInCents: number;
+  costInCents: number;
+  categorySlug: string;
+  featuredInHero: boolean;
+  variant: {
+    colorName: string;
+    colorSlug: string;
+    swatchHex: string;
+    cutoutImageUrl: string;
+    atmosphereBg: string;
+    atmosphereGlow: string;
+    atmosphereText: string;
+    isLightTheme: boolean;
+    stocks: Array<{ sizeLabel: string; stock: number }>;
+  };
+}
+
+export async function createProduct(input: NewProductInput): Promise<void> {
+  const category = await prisma.category.findUnique({
+    where: { slug: input.categorySlug },
+    select: { id: true },
+  });
+  if (!category) throw new Error("Categoria não encontrada");
+
+  const existing = await prisma.product.findUnique({
+    where: { slug: input.slug },
+    select: { id: true },
+  });
+  if (existing) throw new Error("Já existe uma peça com esse slug");
+
+  await prisma.product.create({
+    data: {
+      slug: input.slug,
+      name: input.name,
+      subtitle: input.subtitle,
+      heroWord: input.heroWord,
+      description: input.description,
+      fabricDetails: input.fabricDetails,
+      careInstructions: input.careInstructions,
+      priceInCents: input.priceInCents,
+      costInCents: input.costInCents,
+      categoryId: category.id,
+      featuredInHero: input.featuredInHero,
+      variants: {
+        create: {
+          colorName: input.variant.colorName,
+          colorSlug: input.variant.colorSlug,
+          swatchHex: input.variant.swatchHex,
+          cutoutImageUrl: input.variant.cutoutImageUrl,
+          atmosphereBg: input.variant.atmosphereBg,
+          atmosphereGlow: input.variant.atmosphereGlow,
+          atmosphereText: input.variant.atmosphereText,
+          isLightTheme: input.variant.isLightTheme,
+          stocks: {
+            create: input.variant.stocks.map((stock) => ({
+              sizeLabel: stock.sizeLabel,
+              stock: stock.stock,
+            })),
+          },
+        },
+      },
+    },
+  });
+}
+
 export async function resetProducts(): Promise<void> {
   const updates: ProductUpdate[] = PRODUCTS.map((product) => ({
     slug: product.slug,
