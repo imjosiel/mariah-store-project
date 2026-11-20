@@ -10,7 +10,6 @@ import {
 import { PRODUCTS } from "@/data/catalog";
 
 import type { BagItem } from "../types/store";
-import { getOrderCode } from "./bagStore";
 import { prisma } from "./prisma";
 
 /** Pedidos no Postgres (Fase 2). Datas serializadas para o Client Component. */
@@ -76,6 +75,7 @@ function toView(
 }
 
 export interface CreateOrderInput {
+  code: string;
   customerName: string;
   items: readonly BagItem[];
   whatsappPayload: string;
@@ -83,7 +83,7 @@ export interface CreateOrderInput {
 
 /** Idempotente por código. O custo vem do banco, não do navegador. */
 export async function createOrder(input: CreateOrderInput): Promise<OrderView> {
-  const code = getOrderCode();
+  const code = input.code;
   const existing = await prisma.order.findUnique({
     where: { code },
     include: { items: true },

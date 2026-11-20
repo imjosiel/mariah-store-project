@@ -32,9 +32,10 @@ function revalidateAdmin(): void {
 export async function createOrderAction(
   items: readonly BagItem[],
   customerName: string,
-  whatsappPayload: string
+  whatsappPayload: string,
+  code: string
 ): Promise<OrderView> {
-  return createOrder({ items, customerName, whatsappPayload });
+  return createOrder({ code, items, customerName, whatsappPayload });
 }
 
 export async function confirmOrderAction(code: string): Promise<void> {

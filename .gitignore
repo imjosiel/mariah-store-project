@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
 
 # dados locais da Fase 1 (allowlist de admins)
 /.data/

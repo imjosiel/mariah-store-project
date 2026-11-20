@@ -150,7 +150,8 @@ export function BagProvider({ children }: { children: React.ReactNode }) {
       await createOrderAction(
         items,
         customerName ?? "",
-        buildOrderSummaryText(customerName)
+        buildOrderSummaryText(customerName),
+        getOrderCode()
       );
     } catch {
       showToast("Não foi possível salvar o pedido no banco");
