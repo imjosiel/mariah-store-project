@@ -20,6 +20,7 @@ export interface AdminProductRow {
   variants: Array<{
     colorSlug: string;
     colorName: string;
+    imageUrl: string;
     stocks: Array<{ sizeLabel: string; stock: number }>;
   }>;
 }
@@ -53,6 +54,7 @@ export async function getAdminProducts(): Promise<AdminProductRow[]> {
     variants: row.variants.map((variant) => ({
       colorSlug: variant.colorSlug,
       colorName: variant.colorName,
+      imageUrl: variant.cutoutImageUrl,
       stocks: variant.stocks
         .map((stock) => ({ sizeLabel: stock.sizeLabel, stock: stock.stock }))
         .sort((a, b) => a.sizeLabel.localeCompare(b.sizeLabel)),
@@ -231,6 +233,24 @@ export async function addVariant(input: NewVariantInput): Promise<void> {
       },
     },
   });
+}
+
+export async function setVariantImage(
+  productSlug: string,
+  colorSlug: string,
+  imageUrl: string
+): Promise<void> {
+  const product = await prisma.product.findUnique({
+    where: { slug: productSlug },
+    select: { id: true },
+  });
+  if (!product) throw new Error("Peça não encontrada");
+
+  const result = await prisma.productVariant.updateMany({
+    where: { productId: product.id, colorSlug },
+    data: { cutoutImageUrl: imageUrl },
+  });
+  if (result.count === 0) throw new Error("Cor não encontrada nesta peça");
 }
 
 export async function resetProducts(): Promise<void> {

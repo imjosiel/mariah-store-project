@@ -16,10 +16,12 @@ import {
   createProduct,
   resetProducts,
   saveProducts,
+  setVariantImage,
   type NewProductInput,
   type NewVariantInput,
   type ProductUpdate,
 } from "@/lib/productStore";
+import { ImageUploadError, uploadProductImage } from "@/lib/blobStore";
 
 export type AdminActionState = { message: string };
 
@@ -227,6 +229,35 @@ export async function addVariantAction(
   } catch (error) {
     return {
       message: error instanceof Error ? error.message : "Não foi possível adicionar a cor.",
+    };
+  }
+}
+
+export async function uploadImageAction(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  if (!(await isSuperAdmin())) return { message: "Acesso negado." };
+
+  const productSlug = String(formData.get("productSlug") ?? "");
+  const colorSlug = String(formData.get("colorSlug") ?? "");
+  const file = formData.get("image");
+
+  if (!productSlug || !colorSlug) return { message: "Peça ou cor não informada." };
+  if (!(file instanceof File)) return { message: "Selecione uma imagem." };
+
+  try {
+    const url = await uploadProductImage(file, productSlug, colorSlug);
+    await setVariantImage(productSlug, colorSlug, url);
+    revalidatePath("/admin/produtos");
+    revalidatePath("/");
+    return { message: "Imagem enviada." };
+  } catch (error) {
+    return {
+      message:
+        error instanceof ImageUploadError || error instanceof Error
+          ? error.message
+          : "Não foi possível enviar a imagem.",
     };
   }
 }

@@ -39,6 +39,7 @@ npm run verify
   `prisma-client-js` para `prisma-client`. Reavaliar quando a 8 estabilizar.
 - `npm audit` reporta 4 avisos `high` em `effect`, dependência **apenas do CLI de desenvolvimento**
   (`prisma → @prisma/config → effect`). Não entra no bundle de produção (`@prisma/client`).
+- Fotos enviadas pelo ERP em **Vercel Blob** (fora do repositório): campo "Trocar imagem" em cada cor, em `/admin/produtos`. Requer `BLOB_READ_WRITE_TOKEN` na Vercel; `next.config.ts` autoriza `**.public.blob.vercel-storage.com`. As 11 imagens antigas em `public/products/` seguem como fallback.
 - `/admin/produtos` edita **preço, custo e estoque por cor/tamanho** no banco e `/admin/produtos/novo`
   cadastra **novas peças** (produto + primeira cor + estoque) e permite **adicionar novas cores**
   com estoque por tamanho a peças existentes — ERP mínimo completo.

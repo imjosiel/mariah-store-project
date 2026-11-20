@@ -12,6 +12,7 @@ import { reaisToCents } from "@/domain/money";
 import type { AdminProductRow, ProductUpdate } from "@/lib/productStore";
 
 import { AddVariantForm } from "./AddVariantForm";
+import { ImageUpload } from "./ImageUpload";
 
 const GLASS =
   "rounded-[20px] border border-[#E4DED8] bg-white/90 shadow-[0_10px_32px_-22px_rgba(59,35,22,0.28)]";
@@ -261,6 +262,11 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
                             );
                           })}
                         </div>
+                        <ImageUpload
+                          productSlug={product.slug}
+                          colorSlug={variant.colorSlug}
+                          currentUrl={variant.imageUrl}
+                        />
                       </div>
                     ))}
                   </div>
