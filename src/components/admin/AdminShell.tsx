@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  HardDrive,
   LayoutDashboard,
   Package,
   ShoppingBag,
@@ -26,6 +27,7 @@ const LINKS = [
   { href: "/admin/pedidos", label: "Pedidos", icon: ShoppingBag },
   { href: "/admin/produtos", label: "Produtos", icon: Package },
   { href: "/admin/usuarios", label: "Administradores", icon: UserPlus },
+  { href: "/admin/armazenamento", label: "Armazenamento", icon: HardDrive },
 ];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {

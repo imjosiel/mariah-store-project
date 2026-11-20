@@ -21,7 +21,7 @@ import {
   type NewVariantInput,
   type ProductUpdate,
 } from "@/lib/productStore";
-import { ImageUploadError, uploadProductImage } from "@/lib/blobStore";
+import { StorageError, setStorageLimitBytes, uploadImage } from "@/lib/r2Store";
 
 export type AdminActionState = { message: string };
 
@@ -247,17 +247,36 @@ export async function uploadImageAction(
   if (!(file instanceof File)) return { message: "Selecione uma imagem." };
 
   try {
-    const url = await uploadProductImage(file, productSlug, colorSlug);
+    const url = await uploadImage(file, productSlug, colorSlug);
     await setVariantImage(productSlug, colorSlug, url);
     revalidatePath("/admin/produtos");
     revalidatePath("/");
     return { message: "Imagem enviada." };
   } catch (error) {
     return {
-      message:
-        error instanceof ImageUploadError || error instanceof Error
-          ? error.message
-          : "Não foi possível enviar a imagem.",
+      message: error instanceof Error ? error.message : "Não foi possível enviar a imagem.",
+    };
+  }
+}
+
+export async function setStorageLimitAction(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  if (!(await isSuperAdmin())) return { message: "Acesso negado." };
+
+  const gb = Number(formData.get("limitGb"));
+  if (!Number.isFinite(gb) || gb < 0.01 || gb > 100) {
+    return { message: "Informe um limite entre 0,01 GB e 100 GB." };
+  }
+
+  try {
+    await setStorageLimitBytes(Math.round(gb * 1024 * 1024 * 1024));
+    revalidatePath("/admin/armazenamento");
+    return { message: "Limite atualizado." };
+  } catch (error) {
+    return {
+      message: error instanceof StorageError ? error.message : "Não foi possível salvar.",
     };
   }
 }

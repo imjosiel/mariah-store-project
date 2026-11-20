@@ -80,6 +80,12 @@ model VariantStock {
   @@unique([variantId, sizeLabel])
 }
 
+model StorageSetting {
+  id         String   @id @default(cuid())
+  limitBytes Int      @default(1073741824) // 1 GB por loja
+  updatedAt  DateTime @updatedAt
+}
+
 model Admin {
   id        String   @id @default(cuid())
   email     String   @unique

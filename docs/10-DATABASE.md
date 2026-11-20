@@ -39,7 +39,8 @@ npm run verify
   `prisma-client-js` para `prisma-client`. Reavaliar quando a 8 estabilizar.
 - `npm audit` reporta 4 avisos `high` em `effect`, dependência **apenas do CLI de desenvolvimento**
   (`prisma → @prisma/config → effect`). Não entra no bundle de produção (`@prisma/client`).
-- Fotos enviadas pelo ERP em **Vercel Blob** (fora do repositório): campo "Trocar imagem" em cada cor, em `/admin/produtos`. Requer `BLOB_READ_WRITE_TOKEN` na Vercel; `next.config.ts` autoriza `**.public.blob.vercel-storage.com`. As 11 imagens antigas em `public/products/` seguem como fallback.
+- Fotos enviadas pelo ERP em **Cloudflare R2** (fora do repositório): campo "Trocar imagem" em cada cor, em `/admin/produtos`. Requer `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` e `R2_PUBLIC_URL` na Vercel; `next.config.ts` autoriza o hostname de `R2_PUBLIC_URL`.
+- Cota por loja em `StorageSetting` (padrão **1 GB**), ajustável pelo super admin em `/admin/armazenamento`. O upload soma os tamanhos dos objetos via `ListObjectsV2` e bloqueia se estourar o limite. As 11 imagens antigas em `public/products/` seguem como fallback.
 - `/admin/produtos` edita **preço, custo e estoque por cor/tamanho** no banco e `/admin/produtos/novo`
   cadastra **novas peças** (produto + primeira cor + estoque) e permite **adicionar novas cores**
   com estoque por tamanho a peças existentes — ERP mínimo completo.

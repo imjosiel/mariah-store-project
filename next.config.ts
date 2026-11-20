@@ -1,16 +1,24 @@
 import type { NextConfig } from "next";
 
+function r2Hostname(): string | undefined {
+  const raw = process.env.R2_PUBLIC_URL?.trim();
+  if (!raw) return undefined;
+  try {
+    return new URL(raw).hostname;
+  } catch {
+    return undefined;
+  }
+}
+
+const host = r2Hostname();
+
 const nextConfig: NextConfig = {
-  /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "**.public.blob.vercel-storage.com",
-      },
-    ],
+    remotePatterns: host
+      ? [{ protocol: "https", hostname: host }]
+      : [],
   },
   turbopack: {
     rules: {
