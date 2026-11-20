@@ -2,6 +2,7 @@
 
 import React from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Heart, MessageCircle, RefreshCw, Sparkles } from "lucide-react";
 import { useBag } from "@/context/BagContext";
 
@@ -119,6 +120,9 @@ export function BrandEssenceSection() {
             <a href="#essencia" className="hover:text-espresso">
               A Marca
             </a>
+            <Link href="/politicas" className="hover:text-espresso">
+              Políticas
+            </Link>
           </div>
         </footer>
       </div>

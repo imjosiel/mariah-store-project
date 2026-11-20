@@ -91,7 +91,7 @@ Se um dia virar dependência, usar como **oráculo de teste** (comparar implemen
 ## 6. Obrigações da loja (fora do app, mas registrar)
 
 - CDC art. 49 — 7 dias de arrependimento em compra fora do estabelecimento (já modelado em `07`, §4).
-- Decreto 7.962/2013 — a página de venda deve mostrar nome empresarial, CNPJ, endereço, despesas de entrega e prazo, e informar como exercer o arrependimento. **Quando formalizar, adicionar esses dados no rodapé do site.**
+- Decreto 7.962/2013 — a página de venda deve mostrar nome empresarial, CNPJ, endereço, despesas de entrega e prazo, e informar como exercer o arrependimento. A rota **`/politicas`** já traz troca/arrependimento, privacidade e identificação; os dados vêm de `NEXT_PUBLIC_STORE_*` (`.env.example`). Como a dona ainda é pessoa física, o site avisa "A preencher" em vez de inventar CNPJ — formalizar como MEI antes de vender.
 - Guardar notas de compra e venda por 5 anos.
 - Relatório Mensal de Receitas Brutas (Anexo X, Resolução CGSN 140/2018) + DASN-Simei anual.
 
