@@ -1,0 +1,105 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingBag,
+  Store,
+  UserPlus,
+} from "lucide-react";
+
+import { signOutFromAdmin } from "@/auth-actions";
+
+/** Card com contraste maior: fundo quente do lado de fora, superfície branca por dentro. */
+export const PANEL =
+  "rounded-[20px] border border-[#E8DDD1] bg-white/90 shadow-[0_10px_32px_-22px_rgba(59,35,22,0.28)]";
+
+const LINKS = [
+  { href: "/admin", label: "Visão geral", icon: LayoutDashboard },
+  { href: "/admin/pedidos", label: "Pedidos", icon: ShoppingBag },
+  { href: "/admin/produtos", label: "Produtos", icon: Package },
+  { href: "/admin/usuarios", label: "Administradores", icon: UserPlus },
+];
+
+export function AdminShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  return (
+    <div className="relative min-h-screen bg-[#F7EFE7] text-espresso">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 10% 6%, rgba(197,143,112,0.14), transparent 38%), radial-gradient(circle at 88% 14%, rgba(228,208,188,0.45), transparent 42%), radial-gradient(circle at 72% 92%, rgba(168,111,80,0.08), transparent 40%)",
+        }}
+      />
+
+      <div className="relative flex min-h-screen">
+        <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col p-4 lg:flex">
+          <div className={`${PANEL} flex h-full flex-col p-5`}>
+            <div className="border-b border-[#EDE3D8] pb-5">
+              <p className="font-serif text-2xl font-semibold leading-none">Maria&apos;s</p>
+              <p className="mt-1 font-serif text-xs tracking-[0.22em] text-copper uppercase">
+                Store
+              </p>
+            </div>
+
+            <nav className="mt-6 space-y-1" aria-label="Navegação administrativa">
+              {LINKS.map(({ href, label, icon: Icon }) => {
+                const active = pathname === href;
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs transition-colors ${
+                      active
+                        ? "bg-espresso font-semibold text-cream"
+                        : "font-medium text-mocha hover:bg-sand/60 hover:text-espresso"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" strokeWidth={1.8} />
+                    {label}
+                  </Link>
+                );
+              })}
+              <Link
+                href="/"
+                className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-mocha transition-colors hover:bg-sand/60 hover:text-espresso"
+              >
+                <Store className="h-4 w-4" strokeWidth={1.8} />
+                Ver loja
+              </Link>
+            </nav>
+
+            <div className="mt-auto space-y-3">
+              <div className="rounded-xl border border-[#EDE3D8] bg-[#FBF6F1] p-3">
+                <p className="text-[10px] font-semibold tracking-wider text-mocha uppercase">
+                  Regra de ouro
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-mocha">
+                  10% da margem de cada peça, liberados 7 dias após a confirmação.
+                </p>
+              </div>
+              <form action={signOutFromAdmin}>
+                <button
+                  type="submit"
+                  className="w-full cursor-pointer rounded-xl border border-[#E8DDD1] px-3 py-2 text-[11px] font-semibold text-mocha transition-colors hover:border-copper hover:text-espresso"
+                >
+                  Sair da conta
+                </button>
+              </form>
+            </div>
+          </div>
+        </aside>
+
+        <main className="min-w-0 flex-1 px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}

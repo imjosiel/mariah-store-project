@@ -2,8 +2,10 @@
 
 ## Estado
 
-Auth.js v5 (`next-auth@5.0.0-beta.32`) protege `/admin` e `/admin/produtos`.
-Rotas públicas: `/`, `/login`, `/api/auth/*`.
+Auth.js v5 (`next-auth@5.0.0-beta.32`) protege todo o espaço `/admin` pela layout.
+Rotas do painel: `/admin` (visão geral), `/admin/pedidos`, `/admin/produtos`,
+`/admin/produtos/novo`, `/admin/usuarios`. Rotas públicas: `/`, `/politicas`,
+`/login`, `/sem-acesso`, `/api/auth/*`. A sidebar é compartilhada via `AdminShell`.
 
 - **Provedor:** Google. E-mail/senha e magic link **não** estão implementados (exigem provedor de e-mail com custo; ver decisão abaixo).
 - **Sessão:** JWT (sem banco na Fase 1).

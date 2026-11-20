@@ -5,7 +5,7 @@ import { useActionState, useState } from "react";
 import { createProductAction } from "@/admin-actions";
 
 const GLASS =
-  "rounded-[22px] border border-white/70 bg-white/55 p-5 shadow-[0_14px_45px_-24px_rgba(59,35,22,0.35)] backdrop-blur-xl sm:p-6";
+  "rounded-[20px] border border-[#E8DDD1] bg-white/90 p-5 shadow-[0_10px_32px_-22px_rgba(59,35,22,0.28)] sm:p-6";
 
 const input =
   "mt-1 w-full rounded-xl border border-latte bg-white/80 px-3 py-2.5 text-sm text-espresso placeholder:text-muted/70 focus:border-rosegold";

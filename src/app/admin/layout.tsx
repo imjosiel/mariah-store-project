@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { canAccessAdmin } from "@/domain/admin-access";
 import { ensureFirstAdmin, getAdminEmails } from "@/lib/adminStore";
+import { AdminShell } from "@/components/admin/AdminShell";
 
 /**
  * Autorização fina: roda em runtime Node porque a allowlist mora em arquivo.
@@ -25,5 +26,5 @@ export default async function AdminLayout({
   const admins = await getAdminEmails();
   if (!canAccessAdmin(session.user.email, admins)) redirect("/sem-acesso");
 
-  return <>{children}</>;
+  return <AdminShell>{children}</AdminShell>;
 }

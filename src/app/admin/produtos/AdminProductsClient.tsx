@@ -14,7 +14,7 @@ import type { AdminProductRow, ProductUpdate } from "@/lib/productStore";
 import { AddVariantForm } from "./AddVariantForm";
 
 const GLASS =
-  "rounded-[22px] border border-white/70 bg-white/55 shadow-[0_14px_45px_-24px_rgba(59,35,22,0.35)] backdrop-blur-xl";
+  "rounded-[20px] border border-[#E8DDD1] bg-white/90 shadow-[0_10px_32px_-22px_rgba(59,35,22,0.28)]";
 
 type Draft = Record<
   string,
@@ -86,17 +86,7 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
   }, [draft, products]);
 
   return (
-    <div className="relative min-h-screen bg-cream text-espresso">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 12% 8%, rgba(197,143,112,0.20), transparent 38%), radial-gradient(circle at 88% 88%, rgba(168,111,80,0.12), transparent 42%)",
-        }}
-      />
-
-      <main className="relative mx-auto max-w-6xl px-4 py-6 sm:px-8">
+    <div className="mx-auto max-w-6xl">
         <div className={`${GLASS} flex flex-wrap items-center justify-between gap-3 px-5 py-4`}>
           <div>
             <p className="text-[10px] font-semibold tracking-[0.18em] text-copper uppercase">
@@ -306,7 +296,6 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
         <p className="mt-6 text-[10px] leading-relaxed text-muted">
           Dados no Postgres (Fase 2). Regras em docs/07 e docs/10.
         </p>
-      </main>
     </div>
   );
 }
