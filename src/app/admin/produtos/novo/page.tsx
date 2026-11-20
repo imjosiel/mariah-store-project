@@ -17,13 +17,13 @@ export default async function NewProductPage() {
     <div className="mx-auto max-w-3xl">
       <Link
         href="/admin/produtos"
-        className="inline-flex items-center gap-1.5 rounded-full border border-[#E8DDD1] bg-white px-4 py-2 text-[11px] font-semibold text-mocha transition-colors hover:border-rosegold hover:text-espresso"
+        className="inline-flex items-center gap-1.5 rounded-full border border-[#E4DED8] bg-white px-4 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-rosegold hover:text-[#141210]"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
         Voltar às peças
       </Link>
       <h1 className="mt-5 font-serif text-3xl font-semibold">Nova peça</h1>
-      <p className="mt-1 text-xs text-muted">
+      <p className="mt-1 text-xs text-[#6E6660]">
         Cadastra produto, primeira cor/tamanho e estoque. O resto pode ser ajustado depois.
       </p>
       <NewProductForm categories={categories} />

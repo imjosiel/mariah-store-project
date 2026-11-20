@@ -14,7 +14,7 @@ import type { AdminProductRow, ProductUpdate } from "@/lib/productStore";
 import { AddVariantForm } from "./AddVariantForm";
 
 const GLASS =
-  "rounded-[20px] border border-[#E8DDD1] bg-white/90 shadow-[0_10px_32px_-22px_rgba(59,35,22,0.28)]";
+  "rounded-[20px] border border-[#E4DED8] bg-white/90 shadow-[0_10px_32px_-22px_rgba(59,35,22,0.28)]";
 
 type Draft = Record<
   string,
@@ -93,7 +93,7 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
               Maria&apos;s Store · Admin
             </p>
             <h1 className="mt-1 font-serif text-2xl font-semibold">Peças e estoque</h1>
-            <p className="mt-0.5 text-[11px] text-muted">
+            <p className="mt-0.5 text-[11px] text-[#6E6660]">
               Preço, custo e estoque no Postgres. O pedido congela os valores ao ser confirmado.
             </p>
           </div>
@@ -108,7 +108,7 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
             <form action={resetProductsAction}>
               <button
                 type="submit"
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-latte px-4 py-2 text-[11px] font-semibold text-mocha transition-colors hover:border-rosegold hover:text-espresso"
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-rosegold hover:text-[#141210]"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Restaurar catálogo
@@ -116,7 +116,7 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
             </form>
             <Link
               href="/admin"
-              className="inline-flex items-center gap-1.5 rounded-full border border-latte px-4 py-2 text-[11px] font-semibold text-mocha transition-colors hover:border-rosegold hover:text-espresso"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-rosegold hover:text-[#141210]"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               Visão geral
@@ -129,12 +129,12 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
             <input type="hidden" name="products" value={JSON.stringify(parsed.updates)} />
           </form>
 
-          <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-latte/70 pb-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-[#E4DED8]/70 pb-4">
             <div>
               <h2 className="font-serif text-xl font-semibold">
                 Catálogo · {products.length} peças
               </h2>
-              <p className="mt-0.5 text-[11px] text-muted">
+              <p className="mt-0.5 text-[11px] text-[#6E6660]">
                 Estoque por cor e tamanho. Use 0 para esgotado.
               </p>
             </div>
@@ -142,7 +142,7 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
               type="submit"
               form="products-save-form"
               disabled={parsed.invalid || pending}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-espresso px-5 py-2.5 text-[11px] font-semibold text-cream transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-[#161311] px-5 py-2.5 text-[11px] font-semibold text-cream transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {state.message ? (
                 <>
@@ -173,7 +173,7 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
               return (
                 <li
                   key={product.slug}
-                  className="rounded-2xl border border-latte/80 bg-cream/70 p-4"
+                  className="rounded-2xl border border-[#E4DED8]/80 bg-cream/70 p-4"
                 >
                   <div className="flex flex-wrap items-center gap-4">
                     <div className="relative h-16 w-14 shrink-0 overflow-hidden rounded-xl bg-sand/60 p-1">
@@ -188,7 +188,7 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
 
                     <div className="min-w-[160px] flex-1">
                       <p className="font-serif text-lg font-semibold leading-tight">{product.name}</p>
-                      <p className="mt-0.5 text-[11px] text-muted">{product.categoryName}</p>
+                      <p className="mt-0.5 text-[11px] text-[#6E6660]">{product.categoryName}</p>
                     </div>
 
                     <MoneyInput
@@ -215,7 +215,7 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
                     />
 
                     <div className="min-w-[130px] text-right">
-                      <p className="text-[10px] font-semibold tracking-wider text-mocha uppercase">
+                      <p className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
                         Margem / 10%
                       </p>
                       <p className="tabular-price mt-0.5 text-sm font-semibold">
@@ -225,17 +225,17 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-3 border-t border-latte/70 pt-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="mt-4 grid gap-3 border-t border-[#E4DED8]/70 pt-3 sm:grid-cols-2 lg:grid-cols-3">
                     {product.variants.map((variant) => (
                       <div key={variant.colorSlug} className="rounded-xl bg-white/60 p-3">
-                        <p className="mb-2 text-[11px] font-semibold text-espresso">
+                        <p className="mb-2 text-[11px] font-semibold text-[#141210]">
                           {variant.colorName}
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {variant.stocks.map((stock) => {
                             const key = stockKey(variant.colorSlug, stock.sizeLabel);
                             return (
-                              <label key={key} className="flex items-center gap-1.5 text-[11px] text-mocha">
+                              <label key={key} className="flex items-center gap-1.5 text-[11px] text-[#4A4440]">
                                 {stock.sizeLabel}
                                 <input
                                   type="number"
@@ -255,7 +255,7 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
                                       },
                                     }))
                                   }
-                                  className="tabular-price w-14 rounded-lg border border-latte bg-cream px-2 py-1 text-center text-xs text-espresso focus:border-rosegold"
+                                  className="tabular-price w-14 rounded-lg border border-[#E4DED8] bg-cream px-2 py-1 text-center text-xs text-[#141210] focus:border-rosegold"
                                 />
                               </label>
                             );
@@ -265,7 +265,7 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
                     ))}
                   </div>
 
-                  <div className="mt-3 border-t border-latte/70 pt-3">
+                  <div className="mt-3 border-t border-[#E4DED8]/70 pt-3">
                     <button
                       type="button"
                       onClick={() =>
@@ -273,7 +273,7 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
                           current === product.slug ? null : product.slug
                         )
                       }
-                      className="cursor-pointer rounded-full border border-latte px-4 py-1.5 text-[11px] font-semibold text-mocha transition-colors hover:border-rosegold hover:text-espresso"
+                      className="cursor-pointer rounded-full border border-[#E4DED8] px-4 py-1.5 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-rosegold hover:text-[#141210]"
                     >
                       {addingSlug === product.slug ? "Fechar" : "+ Adicionar cor"}
                     </button>
@@ -293,7 +293,7 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
           )}
         </div>
 
-        <p className="mt-6 text-[10px] leading-relaxed text-muted">
+        <p className="mt-6 text-[10px] leading-relaxed text-[#6E6660]">
           Dados no Postgres (Fase 2). Regras em docs/07 e docs/10.
         </p>
     </div>
@@ -316,7 +316,7 @@ function MoneyInput({
     <div>
       <label
         htmlFor={id}
-        className="block text-[10px] font-semibold tracking-wider text-mocha uppercase"
+        className="block text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase"
       >
         {label}
       </label>
@@ -326,8 +326,8 @@ function MoneyInput({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         aria-invalid={invalid}
-        className={`tabular-price mt-1 w-28 rounded-xl border bg-white/80 px-3 py-2 text-sm text-espresso focus:border-rosegold ${
-          invalid ? "border-copper" : "border-latte"
+        className={`tabular-price mt-1 w-28 rounded-xl border bg-white/80 px-3 py-2 text-sm text-[#141210] focus:border-rosegold ${
+          invalid ? "border-copper" : "border-[#E4DED8]"
         }`}
       />
     </div>

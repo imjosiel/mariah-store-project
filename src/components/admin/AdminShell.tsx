@@ -14,7 +14,12 @@ import { signOutFromAdmin } from "@/auth-actions";
 
 /** Card com contraste maior: fundo quente do lado de fora, superfície branca por dentro. */
 export const PANEL =
-  "rounded-[20px] border border-[#E8DDD1] bg-white/90 shadow-[0_10px_32px_-22px_rgba(59,35,22,0.28)]";
+  "rounded-[20px] border border-[#E4DED8] bg-white shadow-[0_8px_28px_-20px_rgba(20,16,14,0.28)]";
+
+/** Texto do painel: preto quente, não marrom. */
+export const INK = "text-[#141210]";
+export const INK_SOFT = "text-[#4A4440]";
+export const INK_MUTED = "text-[#6E6660]";
 
 const LINKS = [
   { href: "/admin", label: "Visão geral", icon: LayoutDashboard },
@@ -27,7 +32,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="relative min-h-screen bg-[#F7EFE7] text-espresso">
+    <div className="relative min-h-screen bg-[#F7EFE7] text-[#141210]">
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-0"
@@ -57,8 +62,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                     aria-current={active ? "page" : undefined}
                     className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs transition-colors ${
                       active
-                        ? "bg-espresso font-semibold text-cream"
-                        : "font-medium text-mocha hover:bg-sand/60 hover:text-espresso"
+                        ? "bg-[#161311] font-semibold text-cream"
+                        : "font-medium text-[#4A4440] hover:bg-sand/60 hover:text-[#141210]"
                     }`}
                   >
                     <Icon className="h-4 w-4" strokeWidth={1.8} />
@@ -68,7 +73,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               })}
               <Link
                 href="/"
-                className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-mocha transition-colors hover:bg-sand/60 hover:text-espresso"
+                className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-[#4A4440] transition-colors hover:bg-sand/60 hover:text-[#141210]"
               >
                 <Store className="h-4 w-4" strokeWidth={1.8} />
                 Ver loja
@@ -76,18 +81,18 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </nav>
 
             <div className="mt-auto space-y-3">
-              <div className="rounded-xl border border-[#EDE3D8] bg-[#FBF6F1] p-3">
-                <p className="text-[10px] font-semibold tracking-wider text-mocha uppercase">
+              <div className="rounded-xl border border-[#EDE3D8] bg-[#F7F4F1] p-3">
+                <p className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
                   Regra de ouro
                 </p>
-                <p className="mt-1 text-[11px] leading-relaxed text-mocha">
+                <p className="mt-1 text-[11px] leading-relaxed text-[#4A4440]">
                   10% da margem de cada peça, liberados 7 dias após a confirmação.
                 </p>
               </div>
               <form action={signOutFromAdmin}>
                 <button
                   type="submit"
-                  className="w-full cursor-pointer rounded-xl border border-[#E8DDD1] px-3 py-2 text-[11px] font-semibold text-mocha transition-colors hover:border-copper hover:text-espresso"
+                  className="w-full cursor-pointer rounded-xl border border-[#E4DED8] px-3 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-copper hover:text-[#141210]"
                 >
                   Sair da conta
                 </button>

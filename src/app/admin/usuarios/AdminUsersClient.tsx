@@ -7,7 +7,7 @@ import { ArrowLeft, Crown, Plus, Trash2, UserPlus } from "lucide-react";
 import { addAdminAction, removeAdminAction } from "@/admin-actions";
 
 const GLASS =
-  "rounded-[20px] border border-[#E8DDD1] bg-white/90 shadow-[0_10px_32px_-22px_rgba(59,35,22,0.28)]";
+  "rounded-[20px] border border-[#E4DED8] bg-white/90 shadow-[0_10px_32px_-22px_rgba(59,35,22,0.28)]";
 
 export function AdminUsersClient({
   admins,
@@ -35,13 +35,13 @@ export function AdminUsersClient({
               Maria&apos;s Store · Admin
             </p>
             <h1 className="mt-1 font-serif text-2xl font-semibold">Administradores</h1>
-            <p className="mt-0.5 text-[11px] text-muted">
+            <p className="mt-0.5 text-[11px] text-[#6E6660]">
               O super administrador pode adicionar ou remover e-mails com acesso ao painel.
             </p>
           </div>
           <Link
             href="/admin"
-            className="inline-flex items-center gap-1.5 rounded-full border border-latte px-4 py-2 text-[11px] font-semibold text-mocha transition-colors hover:border-rosegold hover:text-espresso"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-rosegold hover:text-[#141210]"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Visão geral
@@ -51,7 +51,7 @@ export function AdminUsersClient({
         {!isSuper ? (
           <div className={`${GLASS} mt-4 p-6`}>
             <p className="font-serif text-xl">Acesso restrito</p>
-            <p className="mt-2 text-xs text-mocha">
+            <p className="mt-2 text-xs text-[#4A4440]">
               Somente o super administrador pode gerenciar usuários. Seu e-mail (
               {currentEmail}) não tem essa permissão.
             </p>
@@ -60,7 +60,7 @@ export function AdminUsersClient({
           <>
             <div className={`${GLASS} mt-4 p-5 sm:p-6`}>
               <h2 className="font-serif text-xl font-semibold">Adicionar administrador</h2>
-              <p className="mt-0.5 text-[11px] text-muted">
+              <p className="mt-0.5 text-[11px] text-[#6E6660]">
                 O e-mail precisa ser uma conta Google usada para entrar no /login.
               </p>
 
@@ -74,12 +74,12 @@ export function AdminUsersClient({
                   type="email"
                   required
                   placeholder="nome@gmail.com"
-                  className="min-w-[220px] flex-1 rounded-xl border border-latte bg-white/80 px-4 py-2.5 text-sm text-espresso placeholder:text-muted/70 focus:border-rosegold"
+                  className="min-w-[220px] flex-1 rounded-xl border border-[#E4DED8] bg-white/80 px-4 py-2.5 text-sm text-[#141210] placeholder:text-[#6E6660]/70 focus:border-rosegold"
                 />
                 <button
                   type="submit"
                   disabled={addPending}
-                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-espresso px-5 py-2.5 text-xs font-semibold text-cream transition-transform hover:-translate-y-0.5 disabled:opacity-50"
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-[#161311] px-5 py-2.5 text-xs font-semibold text-cream transition-transform hover:-translate-y-0.5 disabled:opacity-50"
                 >
                   <UserPlus className="h-3.5 w-3.5" />
                   Adicionar
@@ -92,7 +92,7 @@ export function AdminUsersClient({
             </div>
 
             <div className={`${GLASS} mt-4 p-5 sm:p-6`}>
-              <div className="flex items-baseline justify-between gap-3 border-b border-latte/70 pb-4">
+              <div className="flex items-baseline justify-between gap-3 border-b border-[#E4DED8]/70 pb-4">
                 <h2 className="font-serif text-xl font-semibold">
                   Usuários com acesso · {admins.length}
                 </h2>
@@ -104,7 +104,7 @@ export function AdminUsersClient({
                   return (
                     <li
                       key={email}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-latte/80 bg-cream/70 px-4 py-3"
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#E4DED8]/80 bg-cream/70 px-4 py-3"
                     >
                       <span className="flex items-center gap-2 text-sm">
                         {isSuper && <Crown className="h-4 w-4 text-copper" />}
@@ -122,7 +122,7 @@ export function AdminUsersClient({
                           <button
                             type="submit"
                             aria-label={`Remover ${email}`}
-                            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-latte px-3 py-1.5 text-[11px] font-semibold text-mocha transition-colors hover:border-copper hover:text-copper"
+                            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#E4DED8] px-3 py-1.5 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-copper hover:text-copper"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                             Remover
@@ -140,7 +140,7 @@ export function AdminUsersClient({
                 </p>
               )}
 
-              <p className="mt-5 flex items-center gap-1.5 text-[10px] text-muted">
+              <p className="mt-5 flex items-center gap-1.5 text-[10px] text-[#6E6660]">
                 <Plus className="h-3 w-3" />
                 Super admin não pode ser removido. Alterações valem na próxima requisição.
               </p>

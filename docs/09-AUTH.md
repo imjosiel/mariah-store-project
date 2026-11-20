@@ -7,6 +7,11 @@ Rotas do painel: `/admin` (visão geral), `/admin/pedidos`, `/admin/produtos`,
 `/admin/produtos/novo`, `/admin/usuarios`. Rotas públicas: `/`, `/politicas`,
 `/login`, `/sem-acesso`, `/api/auth/*`. A sidebar é compartilhada via `AdminShell`.
 
+**Exceção visual:** o dashboard não segue a identidade estrita de `DESIGN.md`. O fundo
+continua quente, mas os cards são brancos, o texto é preto quente (`#141210`) e os
+gráficos usam uma paleta mais colorida (vinho, terracota, sálvia, âmbar, verde, roxo).
+Prioridade: legibilidade. A loja pública mantém a identidade original.
+
 - **Provedor:** Google. E-mail/senha e magic link **não** estão implementados (exigem provedor de e-mail com custo; ver decisão abaixo).
 - **Sessão:** JWT (sem banco na Fase 1).
 - **Autorização:** `src/domain/admin-access.ts` (puro, testado) + `src/app/admin/layout.tsx` (runtime Node). Só e-mails na allowlist entram — **fail-closed sempre**. O proxy (`src/proxy.ts`) só checa identidade; a layout checa a lista. Conta autenticada sem permissão é levada a `/sem-acesso`.
