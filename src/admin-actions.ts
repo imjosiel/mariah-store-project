@@ -12,10 +12,12 @@ import {
   removeAdminEmail,
 } from "@/lib/adminStore";
 import {
+  addVariant,
   createProduct,
   resetProducts,
   saveProducts,
   type NewProductInput,
+  type NewVariantInput,
   type ProductUpdate,
 } from "@/lib/productStore";
 
@@ -159,6 +161,74 @@ export async function createProductAction(
 
   revalidatePath("/admin/produtos");
   redirect("/admin/produtos");
+}
+
+export async function addVariantAction(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  if (!(await isSuperAdmin())) return { message: "Acesso negado." };
+
+  const raw = String(formData.get("variant") ?? "");
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return { message: "Dados inválidos." };
+    }
+    const item = parsed as Record<string, unknown>;
+    const textFields = [
+      "productSlug",
+      "colorName",
+      "colorSlug",
+      "swatchHex",
+      "cutoutImageUrl",
+      "atmosphereBg",
+      "atmosphereGlow",
+      "atmosphereText",
+    ];
+    for (const key of textFields) {
+      if (typeof item[key] !== "string" || !String(item[key]).trim()) {
+        return { message: `Preencha ${key}.` };
+      }
+    }
+    if (!Array.isArray(item.stocks) || item.stocks.length === 0) {
+      return { message: "Informe ao menos um tamanho." };
+    }
+
+    const stocks: NewVariantInput["stocks"] = [];
+    for (const rawStock of item.stocks) {
+      if (!rawStock || typeof rawStock !== "object") return { message: "Dados inválidos." };
+      const stock = rawStock as Record<string, unknown>;
+      if (
+        typeof stock.sizeLabel !== "string" ||
+        typeof stock.stock !== "number" ||
+        !Number.isInteger(stock.stock) ||
+        stock.stock < 0
+      ) {
+        return { message: "Estoque inválido." };
+      }
+      stocks.push({ sizeLabel: stock.sizeLabel, stock: stock.stock });
+    }
+
+    await addVariant({
+      productSlug: String(item.productSlug),
+      colorName: String(item.colorName),
+      colorSlug: String(item.colorSlug),
+      swatchHex: String(item.swatchHex),
+      cutoutImageUrl: String(item.cutoutImageUrl),
+      atmosphereBg: String(item.atmosphereBg),
+      atmosphereGlow: String(item.atmosphereGlow),
+      atmosphereText: String(item.atmosphereText),
+      isLightTheme: item.isLightTheme === true,
+      stocks,
+    });
+    revalidatePath("/admin/produtos");
+    return { message: "Cor adicionada." };
+  } catch (error) {
+    return {
+      message: error instanceof Error ? error.message : "Não foi possível adicionar a cor.",
+    };
+  }
 }
 
 export async function resetProductsAction(): Promise<void> {

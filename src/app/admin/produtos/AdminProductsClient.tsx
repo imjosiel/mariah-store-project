@@ -11,6 +11,8 @@ import { calculateCommission } from "@/domain/commission";
 import { reaisToCents } from "@/domain/money";
 import type { AdminProductRow, ProductUpdate } from "@/lib/productStore";
 
+import { AddVariantForm } from "./AddVariantForm";
+
 const GLASS =
   "rounded-[22px] border border-white/70 bg-white/55 shadow-[0_14px_45px_-24px_rgba(59,35,22,0.35)] backdrop-blur-xl";
 
@@ -43,6 +45,7 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
     )
   );
   const [state, formAction, pending] = useActionState(saveProductsAction, { message: "" });
+  const [addingSlug, setAddingSlug] = useState<string | null>(null);
 
   const parsed = useMemo(() => {
     const updates: ProductUpdate[] = [];
@@ -131,8 +134,10 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
           </div>
         </div>
 
-        <form action={formAction} className={`${GLASS} mt-4 p-5 sm:p-6`}>
-          <input type="hidden" name="products" value={JSON.stringify(parsed.updates)} />
+        <div className={`${GLASS} mt-4 p-5 sm:p-6`}>
+          <form action={formAction} id="products-save-form">
+            <input type="hidden" name="products" value={JSON.stringify(parsed.updates)} />
+          </form>
 
           <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-latte/70 pb-4">
             <div>
@@ -145,6 +150,7 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
             </div>
             <button
               type="submit"
+              form="products-save-form"
               disabled={parsed.invalid || pending}
               className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-espresso px-5 py-2.5 text-[11px] font-semibold text-cream transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -268,6 +274,23 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
                       </div>
                     ))}
                   </div>
+
+                  <div className="mt-3 border-t border-latte/70 pt-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAddingSlug((current) =>
+                          current === product.slug ? null : product.slug
+                        )
+                      }
+                      className="cursor-pointer rounded-full border border-latte px-4 py-1.5 text-[11px] font-semibold text-mocha transition-colors hover:border-rosegold hover:text-espresso"
+                    >
+                      {addingSlug === product.slug ? "Fechar" : "+ Adicionar cor"}
+                    </button>
+                    {addingSlug === product.slug && (
+                      <AddVariantForm productSlug={product.slug} />
+                    )}
+                  </div>
                 </li>
               );
             })}
@@ -278,7 +301,7 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
               Confira os valores em vermelho antes de salvar.
             </p>
           )}
-        </form>
+        </div>
 
         <p className="mt-6 text-[10px] leading-relaxed text-muted">
           Dados no Postgres (Fase 2). Regras em docs/07 e docs/10.

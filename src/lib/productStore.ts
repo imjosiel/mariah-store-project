@@ -176,6 +176,63 @@ export async function createProduct(input: NewProductInput): Promise<void> {
   });
 }
 
+export interface NewVariantInput {
+  productSlug: string;
+  colorName: string;
+  colorSlug: string;
+  swatchHex: string;
+  cutoutImageUrl: string;
+  atmosphereBg: string;
+  atmosphereGlow: string;
+  atmosphereText: string;
+  isLightTheme: boolean;
+  stocks: Array<{ sizeLabel: string; stock: number }>;
+}
+
+export async function addVariant(input: NewVariantInput): Promise<void> {
+  const product = await prisma.product.findUnique({
+    where: { slug: input.productSlug },
+    select: { id: true },
+  });
+  if (!product) throw new Error("Peça não encontrada");
+
+  const duplicate = await prisma.productVariant.findUnique({
+    where: {
+      productId_colorSlug: {
+        productId: product.id,
+        colorSlug: input.colorSlug,
+      },
+    },
+    select: { id: true },
+  });
+  if (duplicate) throw new Error("Essa cor já existe nesta peça");
+
+  const total = await prisma.productVariant.count({
+    where: { productId: product.id },
+  });
+
+  await prisma.productVariant.create({
+    data: {
+      productId: product.id,
+      colorName: input.colorName,
+      colorSlug: input.colorSlug,
+      swatchHex: input.swatchHex,
+      cutoutImageUrl: input.cutoutImageUrl,
+      atmosphereBg: input.atmosphereBg,
+      atmosphereGlow: input.atmosphereGlow,
+      atmosphereText: input.atmosphereText,
+      isLightTheme: input.isLightTheme,
+      sortOrder: total,
+      stocks: {
+        create: input.stocks.map((stock) => ({
+          sizeLabel: stock.sizeLabel,
+          stock: stock.stock,
+        })),
+      },
+    },
+  });
+}
+
 export async function resetProducts(): Promise<void> {
   const updates: ProductUpdate[] = PRODUCTS.map((product) => ({
     slug: product.slug,

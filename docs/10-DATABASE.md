@@ -40,7 +40,8 @@ npm run verify
 - `npm audit` reporta 4 avisos `high` em `effect`, dependência **apenas do CLI de desenvolvimento**
   (`prisma → @prisma/config → effect`). Não entra no bundle de produção (`@prisma/client`).
 - `/admin/produtos` edita **preço, custo e estoque por cor/tamanho** no banco e `/admin/produtos/novo`
-  cadastra **novas peças** (produto + primeira cor + estoque) — ERP mínimo completo.
+  cadastra **novas peças** (produto + primeira cor + estoque) e permite **adicionar novas cores**
+  com estoque por tamanho a peças existentes — ERP mínimo completo.
 - **Fontes da verdade já migradas para o banco:** catálogo (`Product`/`Category`/`ProductVariant`),
   admins (`Admin`), custos (`Product.costInCents`), pedidos (`Order`/`OrderItem`) e estoque
   (`VariantStock`). A vitrine lê `getProductsFromDb()`; o mock só fornece dados editoriais ainda
