@@ -180,9 +180,6 @@ export function NewProductForm({
               {imageName && <span className="text-[10px] text-[#6E6660]">{imageName}</span>}
             </div>
             {cutStatus && <p className="mt-1 text-[10px] text-[#6E6660]">{cutStatus}</p>}
-            <p className="mt-1 text-[10px] text-muted">
-              O upload para o R2 acontece ao criar a peça.
-            </p>
           </div>
           <Field name="atmosphereBg" label="Fundo da atmosfera" defaultValue="#FAF3EB" />
           <Field name="atmosphereGlow" label="Brilho da atmosfera" defaultValue="#FFFDF9" />

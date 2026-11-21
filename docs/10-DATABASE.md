@@ -39,6 +39,12 @@ npm run verify
 - `npm audit` reporta 4 avisos `high` em `effect`, dependência **apenas do CLI de desenvolvimento**
   (`prisma → @prisma/config → effect`). Não entra no bundle de produção (`@prisma/client`).
 - Fotos enviadas pelo ERP em **Cloudflare R2** (fora do repositório): campo "Trocar imagem" em cada cor, em `/admin/produtos`. Requer `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` e `R2_PUBLIC_URL` na Vercel; `next.config.ts` autoriza o hostname de `R2_PUBLIC_URL`.
+- O fundo da foto é removido **no navegador** por `@imgly/background-removal` (modelo `isnet_quint8`) antes do upload, gerando WebP com alpha. A cor da amostra é inferida do recorte — isso é comportamento do sistema, não texto para a interface.
+- Upload acontece ao salvar a cor ou ao criar uma peça; não existe botão de "enviar imagem" separado.
+
+## Convenção de texto da interface
+
+Detalhes de implementação **não aparecem na tela** — ficam apenas neste documento e no `docs/07`. A interface fala de peça, cor, tamanho e preço; não menciona R2, upload, modelo de IA, "regra de ouro" nem prazos de comissão. Isso evita vazar arquitetura para quem usa o ERP e evita textos desatualizados quando a infra muda.
 - Cota por loja em `StorageSetting` (padrão **1 GB**), ajustável pelo super admin em `/admin/armazenamento`. O upload soma os tamanhos dos objetos via `ListObjectsV2` e bloqueia se estourar o limite. As 11 imagens antigas em `public/products/` seguem como fallback.
 - `/admin/produtos` edita **preço, custo e estoque por cor/tamanho** no banco e `/admin/produtos/novo`
   cadastra **novas peças** (produto + primeira cor + estoque) e permite **adicionar novas cores**

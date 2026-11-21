@@ -118,10 +118,9 @@ export function AddVariantForm({
                 </label>
                 {imageName && <span className="text-[10px] text-muted">{imageName}</span>}
               </div>
-              <p className="mt-1 text-[10px] text-muted">
-                {cutStatus ||
-                  "Fundo removido automaticamente. A cor da amostra é sugerida pelo recorte."}
-              </p>
+              {cutStatus && (
+                <p className="mt-1 text-[10px] text-muted">{cutStatus}</p>
+              )}
               {cutError && (
                 <p className="mt-1 text-[10px] font-semibold text-copper">{cutError}</p>
               )}
@@ -200,7 +199,7 @@ export function AddVariantForm({
             <span className="text-[10px] font-semibold tracking-wider text-mocha uppercase">
               Estoque inicial
             </span>
-            <span className="text-[10px] text-muted">digite os tamanhos · + adiciona · × remove</span>
+
           </div>
           <div className="mt-1 flex flex-wrap gap-2">
             {rows.map((row, index) => (

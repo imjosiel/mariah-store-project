@@ -82,15 +82,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               </Link>
             </nav>
 
-            <div className="mt-auto space-y-3">
-              <div className="rounded-xl border border-[#EDE3D8] bg-[#F7F4F1] p-3">
-                <p className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
-                  Regra de ouro
-                </p>
-                <p className="mt-1 text-[11px] leading-relaxed text-[#4A4440]">
-                  10% da margem de cada peça, liberados 7 dias após a confirmação.
-                </p>
-              </div>
+            <div className="mt-auto">
               <form action={signOutFromAdmin}>
                 <button
                   type="submit"

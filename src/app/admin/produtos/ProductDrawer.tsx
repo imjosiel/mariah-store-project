@@ -84,9 +84,7 @@ export function ProductDrawer({
         <div className="min-h-0 flex-1 overflow-y-auto p-6">
           <section>
             <h3 className="font-serif text-lg font-semibold">Valores</h3>
-            <p className="mt-0.5 text-[11px] text-[#6E6660]">
-              Usados em todas as cores. Salve ajustando uma cor.
-            </p>
+
             <div className="mt-3 flex flex-wrap items-end gap-3">
               <label className="block">
                 <span className="block text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
@@ -174,7 +172,7 @@ export function ProductDrawer({
 
         <footer className="flex items-center justify-between gap-3 border-t border-[#EDE3D8] bg-[#FDFAF8] px-6 py-4">
           <p className="text-[10px] text-[#6E6660]">
-            {invalid ? "Confira os valores." : "Salva preço, custo, tamanhos e imagem desta cor."}
+            {invalid ? "Confira os valores." : ""}
           </p>
           <div className="flex items-center gap-2">
             <button
