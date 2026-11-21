@@ -9,7 +9,8 @@ import {
   ShoppingBag,
 } from "lucide-react";
 
-import { PRODUCTS, formatBRL } from "@/data/catalog";
+import { formatBRL } from "@/lib/money";
+import type { AdminProductRow } from "@/lib/productStore";
 import type { OrderView } from "@/lib/orderStore";
 import {
   getStockServerSnapshot,
@@ -192,7 +193,7 @@ function StatusBreakdown({ orders }: { orders: readonly OrderView[] }) {
   );
 }
 
-function StockPanel() {
+function StockPanel({ products }: { products: AdminProductRow[] }) {
   const stock = useSyncExternalStore(
     subscribeStock,
     getStockSnapshot,
@@ -201,7 +202,7 @@ function StockPanel() {
 
   const low = useMemo(() => {
     const rows: Array<{ key: string; label: string; qty: number }> = [];
-    for (const product of PRODUCTS) {
+    for (const product of products) {
       for (const variant of product.variants) {
         for (const size of variant.stocks) {
           const qty = stock.levels[`${variant.id}:${size.sizeLabel}`] ?? 0;
@@ -216,7 +217,7 @@ function StockPanel() {
       }
     }
     return rows.slice(0, 6);
-  }, [stock]);
+  }, [products, stock]);
 
   return (
     <div className={`${PANEL} p-5 sm:p-6`}>
@@ -255,7 +256,13 @@ function StockPanel() {
   );
 }
 
-export function AdminDashboard({ orders }: { orders: OrderView[] }) {
+export function AdminDashboard({
+  orders,
+  products,
+}: {
+  orders: OrderView[];
+  products: AdminProductRow[];
+}) {
   const metrics = useMemo(() => {
     const payable = orders
       .filter((order) => order.commissionStatus === "PAYABLE")
@@ -326,7 +333,7 @@ export function AdminDashboard({ orders }: { orders: OrderView[] }) {
         <StatusBreakdown orders={orders} />
       </section>
 
-      <StockPanel />
+      <StockPanel products={products} />
     </div>
   );
 }

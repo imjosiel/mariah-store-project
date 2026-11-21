@@ -8,7 +8,7 @@ import React, {
   useSyncExternalStore,
 } from "react";
 import { BagItem, Product, ProductVariant } from "@/types/store";
-import { formatBRL } from "@/data/catalog";
+import { formatBRL } from "@/lib/money";
 import {
   clearBag as clearBagStore,
   getOrderCode,

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
 
-import { formatBRL } from "@/data/catalog";
+import { formatBRL } from "@/lib/money";
 import { calculateCommission } from "@/domain/commission";
 import { reaisToCents } from "@/domain/money";
 import type { AdminProductRow } from "@/lib/productStore";
@@ -168,21 +168,31 @@ export function ProductDrawer({
               </div>
             )}
 
-            <AddVariantForm productSlug={product.slug} />
+            <AddVariantForm product={product} />
           </section>
         </div>
 
         <footer className="flex items-center justify-between gap-3 border-t border-[#EDE3D8] bg-[#FDFAF8] px-6 py-4">
           <p className="text-[10px] text-[#6E6660]">
-            {invalid ? "Confira os valores." : "Preço e custo entram ao salvar uma cor."}
+            {invalid ? "Confira os valores." : "Salva preço, custo, tamanhos e imagem desta cor."}
           </p>
-          <button
-            type="button"
-            onClick={onClose}
-            className="cursor-pointer rounded-full border border-[#E4DED8] px-5 py-2.5 text-xs font-semibold text-[#4A4440] hover:text-[#141210]"
-          >
-            Fechar
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="cursor-pointer rounded-full border border-[#E4DED8] px-5 py-2.5 text-xs font-semibold text-[#4A4440] hover:text-[#141210]"
+            >
+              Fechar
+            </button>
+            <button
+              type="submit"
+              form="variant-form"
+              disabled={invalid}
+              className="cursor-pointer rounded-full bg-[#161311] px-6 py-2.5 text-xs font-semibold text-white transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Salvar alterações
+            </button>
+          </div>
         </footer>
       </aside>
     </div>

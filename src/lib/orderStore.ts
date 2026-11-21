@@ -7,8 +7,6 @@ import {
   markCommissionPaid,
   type CommissionStatus,
 } from "../domain/commission";
-import { PRODUCTS } from "@/data/catalog";
-
 import type { BagItem } from "../types/store";
 import { prisma } from "./prisma";
 
@@ -97,32 +95,23 @@ export async function createOrder(input: CreateOrderInput): Promise<OrderView> {
   });
   const costBySlug = new Map(products.map((product) => [product.slug, product]));
 
-  // IDs de variação do catálogo mock ≠ IDs do banco. Mapear por cor.
-  const dbVariants = await prisma.productVariant.findMany({
-    where: { productId: { in: products.map((product) => product.id) } },
-    select: { id: true, productId: true, colorSlug: true },
-  });
-  const variantByColor = new Map(
-    dbVariants.map((variant) => [`${variant.productId}:${variant.colorSlug}`, variant.id])
-  );
-
   const totalInCents = input.items.reduce(
     (sum, item) => sum + item.unitPriceInCents * item.quantity,
     0
   );
 
+  const variantIds = await prisma.productVariant.findMany({
+    where: { id: { in: input.items.map((item) => item.variantId) } },
+    select: { id: true },
+  });
+  const validVariantIds = new Set(variantIds.map((variant) => variant.id));
+
   const items: Prisma.OrderItemCreateManyOrderInput[] = input.items.map((item) => {
     const product = costBySlug.get(item.productSlug);
-    const catalogVariant = PRODUCTS.find((p) => p.slug === item.productSlug)?.variants.find(
-      (variant) => variant.id === item.variantId
-    );
-    const dbVariantId = product && catalogVariant
-      ? variantByColor.get(`${product.id}:${catalogVariant.colorSlug}`)
-      : undefined;
 
     return {
       productId: product?.id ?? item.productId,
-      variantId: dbVariantId ?? item.variantId,
+      variantId: validVariantIds.has(item.variantId) ? item.variantId : "",
       productName: item.productName,
       colorName: item.colorName,
       sizeLabel: item.sizeLabel,

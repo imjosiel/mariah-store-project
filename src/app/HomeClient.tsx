@@ -1,13 +1,19 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Product } from "@/types/store";
+import { Category, Product } from "@/types/store";
 import { HeroOrbitalShowcase } from "@/components/HeroOrbitalShowcase";
 import { EditorialCatalog } from "@/components/EditorialCatalog";
 import { BrandEssenceSection } from "@/components/BrandEssenceSection";
 import { BagDrawer } from "@/components/BagDrawer";
 
-export function HomeClient({ products }: { products: Product[] }) {
+export function HomeClient({
+  products,
+  categories,
+}: {
+  products: Product[];
+  categories: Category[];
+}) {
   const heroProducts = useMemo(
     () => products.filter((p) => p.featuredInHero),
     [products]
@@ -40,6 +46,7 @@ export function HomeClient({ products }: { products: Product[] }) {
 
       <EditorialCatalog
         products={products}
+        categories={categories}
         inspectedRequest={inspectedRequest}
       />
 

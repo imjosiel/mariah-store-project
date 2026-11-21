@@ -11,7 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Product, ProductVariant } from "@/types/store";
-import { formatBRL } from "@/data/catalog";
+import { formatBRL } from "@/lib/money";
 import { useBag } from "@/context/BagContext";
 import { liveStock } from "@/domain/stock";
 import { useStockLevels } from "@/lib/useStock";

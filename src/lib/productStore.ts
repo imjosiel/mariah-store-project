@@ -1,7 +1,5 @@
 import type { Prisma } from "@prisma/client";
 
-import { PRODUCTS } from "@/data/catalog";
-
 import { prisma } from "./prisma";
 
 /**
@@ -433,18 +431,3 @@ export async function setProductSizeSystem(
   );
 }
 
-export async function resetProducts(): Promise<void> {
-  const updates: ProductUpdate[] = PRODUCTS.map((product) => ({
-    slug: product.slug,
-    priceInCents: product.priceInCents,
-    costInCents: product.costInCents,
-    stocks: product.variants.flatMap((variant) =>
-      variant.stocks.map((stock) => ({
-        colorSlug: variant.colorSlug,
-        sizeLabel: stock.sizeLabel,
-        stock: stock.stock,
-      }))
-    ),
-  }));
-  await saveProducts(updates);
-}

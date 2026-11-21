@@ -14,7 +14,8 @@ import {
   Star,
   ZoomIn,
 } from "lucide-react";
-import { CATEGORIES, formatBRL } from "@/data/catalog";
+import { formatBRL } from "@/lib/money";
+import type { Category } from "@/types/store";
 import { CategorySlug, Product, ProductVariant } from "@/types/store";
 import { useBag } from "@/context/BagContext";
 import { liveStock } from "@/domain/stock";
@@ -22,6 +23,7 @@ import { useStockLevels } from "@/lib/useStock";
 
 interface EditorialCatalogProps {
   products: Product[];
+  categories: Category[];
   inspectedRequest: { productId: string; variantId?: string; nonce: number } | null;
 }
 
@@ -29,6 +31,7 @@ type ViewMode = "carousel" | "grid";
 
 export function EditorialCatalog({
   products,
+  categories,
   inspectedRequest,
 }: EditorialCatalogProps) {
   const { addItem } = useBag();
@@ -731,7 +734,7 @@ export function EditorialCatalog({
                 >
                   {/* Mobile Horizontal Pills */}
                   <div className="flex gap-2 overflow-x-auto pb-2 lg:hidden">
-                    {CATEGORIES.map((cat) => {
+                    {categories.map((cat) => {
                       const active = activeCategory === cat.slug;
                       return (
                         <button
@@ -752,7 +755,7 @@ export function EditorialCatalog({
 
                   {/* Desktop Typographic Outline/Solid Menu */}
                   <ul className="hidden space-y-1.5 lg:block">
-                    {CATEGORIES.map((cat) => {
+                    {categories.map((cat) => {
                       const active = activeCategory === cat.slug;
                       const count =
                         cat.slug === "todas"

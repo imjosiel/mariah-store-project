@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 
-import { getProductsFromDb } from "@/lib/catalogDb";
+import { getCategoriesFromDb, getProductsFromDb } from "@/lib/catalogDb";
 
 import { HomeClient } from "./HomeClient";
 
@@ -8,6 +8,9 @@ export const instant = false;
 
 export default async function HomePage() {
   await connection();
-  const products = await getProductsFromDb();
-  return <HomeClient products={products} />;
+  const [products, categories] = await Promise.all([
+    getProductsFromDb(),
+    getCategoriesFromDb(),
+  ]);
+  return <HomeClient products={products} categories={categories} />;
 }

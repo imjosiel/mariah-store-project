@@ -5,7 +5,7 @@
 - Projeto Neon: `ancient-sky-34341454`, branch `production`, região AWS US East 2.
 - PostgreSQL 18, banco `neondb`, role `neondb_owner`.
 - Schema aplicado com `prisma migrate dev --name init` → `prisma/migrations/<ts>_init/`.
-- Catálogo semeado com `npm run db:seed`: 5 categorias, 6 produtos, 11 variações, 40 estoques.
+- Catálogo cadastrado diretamente no banco (5 categorias, 6 produtos, 11 variações, 40 estoques). Não existe mais arquivo de seed nem catálogo mock.
 - Endpoint de prova: `GET /api/health` → contagens do banco.
 
 ## Env vars
@@ -29,7 +29,6 @@ DIRECT_URL=postgresql://...@....../neondb?...
 ```bash
 npx prisma validate
 npx prisma migrate dev --name <nome>
-npm run db:seed
 npm run verify
 ```
 
@@ -46,8 +45,8 @@ npm run verify
   com estoque por tamanho a peças existentes — ERP mínimo completo.
 - **Fontes da verdade já migradas para o banco:** catálogo (`Product`/`Category`/`ProductVariant`),
   admins (`Admin`), custos (`Product.costInCents`), pedidos (`Order`/`OrderItem`) e estoque
-  (`VariantStock`). A vitrine lê `getProductsFromDb()`; o mock só fornece dados editoriais ainda
-  não modelados (medidas/avaliações). A sacola continua em `localStorage` — é estado de navegador.
+  (`VariantStock`). A vitrine lê `getProductsFromDb()` e as categorias vêm do banco. Sem mocks:
+  nada de `PRODUCTS`/`CATEGORIES` em código. A sacola continua em `localStorage` — é estado de navegador.
 - O frontend lê o estoque do banco via `GET /api/stock` e hidrata o cache local; confirmação de
   pedido baixa o estoque em transação no Prisma.
 - O domínio em `src/domain/` não mudou — só os adaptadores.

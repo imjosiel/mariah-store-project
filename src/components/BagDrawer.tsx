@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { useBag } from "@/context/BagContext";
-import { formatBRL } from "@/data/catalog";
+import { formatBRL } from "@/lib/money";
 
 export function BagDrawer() {
   const {

@@ -15,7 +15,6 @@ import {
   addVariant,
   createProduct,
   replaceVariantSizes,
-  resetProducts,
   saveProducts,
   setProductSizes,
   setProductSizeSystem,
@@ -415,12 +414,6 @@ export async function saveVariantAction(
       message: error instanceof Error ? error.message : "Não foi possível salvar a cor.",
     };
   }
-}
-
-export async function resetProductsAction(): Promise<void> {
-  if (!(await isSuperAdmin())) return;
-  await resetProducts();
-  revalidatePath("/admin/produtos");
 }
 
 async function isSuperAdmin(): Promise<boolean> {

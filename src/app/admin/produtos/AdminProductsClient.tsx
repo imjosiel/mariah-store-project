@@ -3,10 +3,9 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, RotateCcw, Search, Sparkles } from "lucide-react";
+import { ArrowLeft, Search, Sparkles } from "lucide-react";
 
-import { resetProductsAction } from "@/admin-actions";
-import { formatBRL } from "@/data/catalog";
+import { formatBRL } from "@/lib/money";
 import type { AdminProductRow } from "@/lib/productStore";
 
 import { ProductDrawer } from "./ProductDrawer";
@@ -55,15 +54,6 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
             <Sparkles className="h-3.5 w-3.5" />
             Nova peça
           </Link>
-          <form action={resetProductsAction}>
-            <button
-              type="submit"
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:text-[#141210]"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Restaurar
-            </button>
-          </form>
           <Link
             href="/admin"
             className="inline-flex items-center gap-1.5 rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:text-[#141210]"

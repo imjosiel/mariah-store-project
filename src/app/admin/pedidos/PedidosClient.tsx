@@ -8,7 +8,7 @@ import {
   X,
 } from "lucide-react";
 
-import { formatBRL } from "@/data/catalog";
+import { formatBRL } from "@/lib/money";
 import { ordersToCsv } from "@/domain/report";
 import {
   cancelOrderAction,

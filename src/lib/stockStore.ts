@@ -1,7 +1,5 @@
-import { PRODUCTS } from "@/data/catalog";
 import {
   applyOrderToStock,
-  buildInitialStock,
   liveStock,
   type StockLine,
   type StockShortfall,
@@ -9,14 +7,14 @@ import {
 } from "@/domain/stock";
 
 /**
- * Estado de estoque da Fase 1 (localStorage), semeado pelo catálogo mock.
- * Quando o Prisma entrar, este adaptador troca de backend; a regra em
+ * Cache de estoque no navegador, hidratado por GET /api/stock (banco).
+ * A fonte da verdade é VariantStock no Postgres; a regra em
  * src/domain/stock.ts continua a mesma.
  */
 
 const STORAGE_KEY = "marias-store:stock:v1";
 const INITIAL: StockState = Object.freeze({
-  levels: buildInitialStock(PRODUCTS.flatMap((product) => product.variants)),
+  levels: {},
   deductedOrders: [],
 });
 
