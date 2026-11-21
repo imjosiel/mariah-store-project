@@ -60,9 +60,17 @@ export function VariantEditor({
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-x-4 gap-y-2">
+        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1.5">
+          <span className="text-[10px] font-semibold tracking-wider text-[#6E6660] uppercase">
+            Tamanho
+          </span>
+          <span className="text-[10px] font-semibold tracking-wider text-[#6E6660] uppercase">
+            Qtd.
+          </span>
+          <span />
+
           {sizes.map((size, index) => (
-            <div key={index} className="flex items-center gap-1.5 text-xs text-[#4A4440]">
+            <div key={index} className="contents">
               <input
                 value={size.label}
                 onChange={(event) =>
@@ -74,16 +82,8 @@ export function VariantEditor({
                 }
                 aria-label={`Tamanho da cor ${variant.colorName}`}
                 placeholder="Tam."
-                className="w-16 rounded-lg border border-[#E4DED8] bg-white px-2 py-1 text-center text-xs text-[#141210] placeholder:text-[#B5ACA6]"
+                className="tabular-price w-16 rounded-lg border border-[#E4DED8] bg-white px-2 py-1.5 text-center text-xs text-[#141210] placeholder:text-[#B5ACA6]"
               />
-              <button
-                type="button"
-                onClick={() => setSizes((prev) => prev.filter((_, i) => i !== index))}
-                aria-label={`Remover tamanho ${size.label || index + 1} da cor ${variant.colorName}`}
-                className="cursor-pointer text-[11px] text-[#9A918B] hover:text-[#A8432F]"
-              >
-                ×
-              </button>
               <input
                 type="number"
                 min={0}
@@ -97,8 +97,16 @@ export function VariantEditor({
                   )
                 }
                 aria-label={`Quantidade do tamanho ${size.label} em ${variant.colorName}`}
-                className="tabular-price w-14 rounded-lg border border-[#E4DED8] bg-white px-2 py-1 text-center text-xs text-[#141210]"
+                className="tabular-price w-full max-w-20 rounded-lg border border-[#E4DED8] bg-white px-2 py-1.5 text-center text-xs text-[#141210]"
               />
+              <button
+                type="button"
+                onClick={() => setSizes((prev) => prev.filter((_, i) => i !== index))}
+                aria-label={`Remover tamanho ${size.label || index + 1} da cor ${variant.colorName}`}
+                className="cursor-pointer rounded-full border border-[#E4DED8] px-2 py-1 text-[11px] text-[#9A918B] transition-colors hover:border-[#A8432F] hover:text-[#A8432F]"
+              >
+                Remover
+              </button>
             </div>
           ))}
         </div>
