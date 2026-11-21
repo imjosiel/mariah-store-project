@@ -188,13 +188,6 @@ export function NewProductForm({
             </div>
             {cutStatus && <p className="mt-1 text-[10px] text-[#6E6660]">{cutStatus}</p>}
           </div>
-          <Field name="atmosphereBg" label="Fundo da atmosfera" defaultValue="#FAF3EB" />
-          <Field name="atmosphereGlow" label="Brilho da atmosfera" defaultValue="#FFFDF9" />
-          <Field name="atmosphereText" label="Texto da atmosfera" defaultValue="#3B2316" />
-          <label className="flex items-end gap-2 pb-2 text-xs text-[#4A4440]">
-            <input name="isLightTheme" type="checkbox" className="h-4 w-4 accent-copper" />
-            Tema claro
-          </label>
         </div>
         <div className="mt-4 sm:col-span-2">
           <span className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
