@@ -1,341 +1,195 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, RotateCcw, Save, Sparkles } from "lucide-react";
+import { ArrowLeft, RotateCcw, Search, Sparkles } from "lucide-react";
 
-import { resetProductsAction, saveProductsAction } from "@/admin-actions";
+import { resetProductsAction } from "@/admin-actions";
 import { formatBRL } from "@/data/catalog";
-import { calculateCommission } from "@/domain/commission";
-import { reaisToCents } from "@/domain/money";
-import type { AdminProductRow, ProductUpdate } from "@/lib/productStore";
+import type { AdminProductRow } from "@/lib/productStore";
 
-import { AddVariantForm } from "./AddVariantForm";
-import { ImageUpload } from "./ImageUpload";
+import { ProductDrawer } from "./ProductDrawer";
 
-const GLASS =
-  "rounded-[20px] border border-[#E4DED8] bg-white/90 shadow-[0_10px_32px_-22px_rgba(59,35,22,0.28)]";
-
-type Draft = Record<
-  string,
-  { price: string; cost: string; stocks: Record<string, string> }
->;
-
-const stockKey = (colorSlug: string, sizeLabel: string) => `${colorSlug}:${sizeLabel}`;
-const centsToInput = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
+const PANEL =
+  "rounded-[20px] border border-[#E4DED8] bg-white shadow-[0_8px_28px_-20px_rgba(20,16,14,0.28)]";
+const PAGE_SIZE = 20;
 
 export function AdminProductsClient({ products }: { products: AdminProductRow[] }) {
-  const [draft, setDraft] = useState<Draft>(() =>
-    Object.fromEntries(
-      products.map((product) => [
-        product.slug,
-        {
-          price: centsToInput(product.priceInCents),
-          cost: centsToInput(product.costInCents),
-          stocks: Object.fromEntries(
-            product.variants.flatMap((variant) =>
-              variant.stocks.map((stock) => [
-                stockKey(variant.colorSlug, stock.sizeLabel),
-                String(stock.stock),
-              ])
-            )
-          ),
-        },
-      ])
-    )
-  );
-  const [state, formAction, pending] = useActionState(saveProductsAction, { message: "" });
-  const [addingSlug, setAddingSlug] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(0);
+  const [selected, setSelected] = useState<AdminProductRow | null>(null);
 
-  const parsed = useMemo(() => {
-    const updates: ProductUpdate[] = [];
-    let invalid = false;
+  const filtered = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (!term) return products;
+    return products.filter(
+      (product) =>
+        product.name.toLowerCase().includes(term) ||
+        product.categoryName.toLowerCase().includes(term) ||
+        product.variants.some((variant) => variant.colorName.toLowerCase().includes(term))
+    );
+  }, [products, query]);
 
-    for (const product of products) {
-      const row = draft[product.slug];
-      if (!row) continue;
-      const priceInCents = reaisToCents(row.price);
-      const costInCents = reaisToCents(row.cost);
-      if (priceInCents === null || costInCents === null) {
-        invalid = true;
-        continue;
-      }
-
-      const stocks: ProductUpdate["stocks"] = [];
-      for (const variant of product.variants) {
-        for (const stock of variant.stocks) {
-          const value = Number(
-            row.stocks[stockKey(variant.colorSlug, stock.sizeLabel)] ?? "0"
-          );
-          if (!Number.isFinite(value) || value < 0 || !Number.isInteger(value)) {
-            invalid = true;
-            continue;
-          }
-          stocks.push({
-            colorSlug: variant.colorSlug,
-            sizeLabel: stock.sizeLabel,
-            stock: value,
-          });
-        }
-      }
-
-      updates.push({ slug: product.slug, priceInCents, costInCents, stocks });
-    }
-
-    return { updates, invalid };
-  }, [draft, products]);
+  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pages - 1);
+  const visible = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
   return (
-    <div className="mx-auto max-w-6xl">
-        <div className={`${GLASS} flex flex-wrap items-center justify-between gap-3 px-5 py-4`}>
-          <div>
-            <p className="text-[10px] font-semibold tracking-[0.18em] text-copper uppercase">
-              Maria&apos;s Store · Admin
-            </p>
-            <h1 className="mt-1 font-serif text-2xl font-semibold">Peças e estoque</h1>
-            <p className="mt-0.5 text-[11px] text-[#6E6660]">
-              Preço, custo e estoque no Postgres. O pedido congela os valores ao ser confirmado.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/admin/produtos/novo"
-              className="inline-flex items-center gap-1.5 rounded-full bg-copper px-4 py-2 text-[11px] font-semibold text-cream transition-transform hover:-translate-y-0.5"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Nova peça
-            </Link>
-            <form action={resetProductsAction}>
-              <button
-                type="submit"
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-rosegold hover:text-[#141210]"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Restaurar catálogo
-              </button>
-            </form>
-            <Link
-              href="/admin"
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-rosegold hover:text-[#141210]"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Visão geral
-            </Link>
-          </div>
+    <div className="mx-auto max-w-5xl">
+      <div className={`${PANEL} flex flex-wrap items-center justify-between gap-3 px-5 py-4`}>
+        <div>
+          <p className="text-[10px] font-semibold tracking-[0.18em] text-[#C0563E] uppercase">
+            Maria&apos;s Store · Admin
+          </p>
+          <h1 className="mt-1 font-serif text-2xl font-semibold text-[#141210]">Produtos</h1>
+          <p className="mt-0.5 text-[11px] text-[#6E6660]">
+            {products.length} peças · clique numa linha para editar preço, estoque e fotos.
+          </p>
         </div>
-
-        <div className={`${GLASS} mt-4 p-5 sm:p-6`}>
-          <form action={formAction} id="products-save-form">
-            <input type="hidden" name="products" value={JSON.stringify(parsed.updates)} />
-          </form>
-
-          <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-[#E4DED8]/70 pb-4">
-            <div>
-              <h2 className="font-serif text-xl font-semibold">
-                Catálogo · {products.length} peças
-              </h2>
-              <p className="mt-0.5 text-[11px] text-[#6E6660]">
-                Estoque por cor e tamanho. Use 0 para esgotado.
-              </p>
-            </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/admin/produtos/novo"
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#C0563E] px-4 py-2 text-[11px] font-semibold text-white transition-transform hover:-translate-y-0.5"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Nova peça
+          </Link>
+          <form action={resetProductsAction}>
             <button
               type="submit"
-              form="products-save-form"
-              disabled={parsed.invalid || pending}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-[#161311] px-5 py-2.5 text-[11px] font-semibold text-cream transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:text-[#141210]"
             >
-              {state.message ? (
-                <>
-                  <Sparkles className="h-3.5 w-3.5" />
-                  {state.message}
-                </>
-              ) : (
-                <>
-                  <Save className="h-3.5 w-3.5" />
-                  Salvar alterações
-                </>
-              )}
+              <RotateCcw className="h-3.5 w-3.5" />
+              Restaurar
             </button>
-          </div>
+          </form>
+          <Link
+            href="/admin"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:text-[#141210]"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Visão geral
+          </Link>
+        </div>
+      </div>
 
-          <ul className="mt-4 space-y-3">
-            {products.map((product) => {
-              const row = draft[product.slug];
-              if (!row) return null;
-              const price = reaisToCents(row.price);
-              const cost = reaisToCents(row.cost);
-              const margin = price !== null && cost !== null ? price - cost : 0;
-              const commission = calculateCommission({
-                costInCents: cost ?? 0,
-                receivedInCents: price ?? 0,
-              });
-
-              return (
-                <li
-                  key={product.slug}
-                  className="rounded-2xl border border-[#E4DED8]/80 bg-cream/70 p-4"
-                >
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="relative h-16 w-14 shrink-0 overflow-hidden rounded-xl bg-sand/60 p-1">
-                      <Image
-                        src={product.imageUrl}
-                        alt={product.name}
-                        fill
-                        sizes="56px"
-                        className="object-contain"
-                      />
-                    </div>
-
-                    <div className="min-w-[160px] flex-1">
-                      <p className="font-serif text-lg font-semibold leading-tight">{product.name}</p>
-                      <p className="mt-0.5 text-[11px] text-[#6E6660]">{product.categoryName}</p>
-                    </div>
-
-                    <MoneyInput
-                      id={`price-${product.slug}`}
-                      label="Preço (R$)"
-                      value={row.price}
-                      onChange={(value) =>
-                        setDraft((prev) => ({
-                          ...prev,
-                          [product.slug]: { ...prev[product.slug], price: value },
-                        }))
-                      }
-                    />
-                    <MoneyInput
-                      id={`cost-${product.slug}`}
-                      label="Custo (R$)"
-                      value={row.cost}
-                      onChange={(value) =>
-                        setDraft((prev) => ({
-                          ...prev,
-                          [product.slug]: { ...prev[product.slug], cost: value },
-                        }))
-                      }
-                    />
-
-                    <div className="min-w-[130px] text-right">
-                      <p className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
-                        Margem / 10%
-                      </p>
-                      <p className="tabular-price mt-0.5 text-sm font-semibold">
-                        {formatBRL(Math.max(0, margin))}
-                        <span className="text-copper"> · {formatBRL(commission)}</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 grid gap-3 border-t border-[#E4DED8]/70 pt-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {product.variants.map((variant) => (
-                      <div key={variant.colorSlug} className="rounded-xl bg-white/60 p-3">
-                        <p className="mb-2 text-[11px] font-semibold text-[#141210]">
-                          {variant.colorName}
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {variant.stocks.map((stock) => {
-                            const key = stockKey(variant.colorSlug, stock.sizeLabel);
-                            return (
-                              <label key={key} className="flex items-center gap-1.5 text-[11px] text-[#4A4440]">
-                                {stock.sizeLabel}
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={1}
-                                  aria-label={`Estoque ${product.name} ${variant.colorName} ${stock.sizeLabel}`}
-                                  value={row.stocks[key] ?? "0"}
-                                  onChange={(event) =>
-                                    setDraft((prev) => ({
-                                      ...prev,
-                                      [product.slug]: {
-                                        ...prev[product.slug],
-                                        stocks: {
-                                          ...prev[product.slug].stocks,
-                                          [key]: event.target.value,
-                                        },
-                                      },
-                                    }))
-                                  }
-                                  className="tabular-price w-14 rounded-lg border border-[#E4DED8] bg-cream px-2 py-1 text-center text-xs text-[#141210] focus:border-rosegold"
-                                />
-                              </label>
-                            );
-                          })}
-                        </div>
-                        <ImageUpload
-                          productSlug={product.slug}
-                          colorSlug={variant.colorSlug}
-                          currentUrl={variant.imageUrl}
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-3 border-t border-[#E4DED8]/70 pt-3">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setAddingSlug((current) =>
-                          current === product.slug ? null : product.slug
-                        )
-                      }
-                      className="cursor-pointer rounded-full border border-[#E4DED8] px-4 py-1.5 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-rosegold hover:text-[#141210]"
-                    >
-                      {addingSlug === product.slug ? "Fechar" : "+ Adicionar cor"}
-                    </button>
-                    {addingSlug === product.slug && (
-                      <AddVariantForm productSlug={product.slug} />
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-
-          {parsed.invalid && (
-            <p className="mt-4 text-[11px] font-semibold text-copper">
-              Confira os valores em vermelho antes de salvar.
-            </p>
-          )}
+      <div className={`${PANEL} mt-4 overflow-hidden`}>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EDE3D8] p-4">
+          <label className="flex min-w-[240px] flex-1 items-center gap-2 rounded-xl border border-[#E4DED8] bg-white px-3 py-2">
+            <Search className="h-4 w-4 text-[#6E6660]" />
+            <input
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setPage(0);
+              }}
+              placeholder="Buscar por peça, categoria ou cor"
+              className="w-full bg-transparent text-sm text-[#141210] outline-none placeholder:text-[#9A918B]"
+            />
+          </label>
+          <span className="tabular-price text-[11px] text-[#6E6660]">
+            {filtered.length === 0
+              ? "Nenhuma peça"
+              : `${safePage * PAGE_SIZE + 1}–${Math.min((safePage + 1) * PAGE_SIZE, filtered.length)} de ${filtered.length}`}
+          </span>
         </div>
 
-        <p className="mt-6 text-[10px] leading-relaxed text-[#6E6660]">
-          Dados no Postgres (Fase 2). Regras em docs/07 e docs/10.
-        </p>
-    </div>
-  );
-}
+        {visible.length === 0 ? (
+          <p className="p-10 text-center text-sm text-[#6E6660]">Nenhuma peça encontrada.</p>
+        ) : (
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-[#EDE3D8] bg-[#FDFAF8] text-[10px] font-semibold tracking-wider text-[#6E6660] uppercase">
+              <tr>
+                <th className="px-4 py-3">Peça</th>
+                <th className="px-4 py-3">Categoria</th>
+                <th className="px-4 py-3 text-right">Preço</th>
+                <th className="px-4 py-3 text-right">Custo</th>
+                <th className="px-4 py-3 text-right">Estoque</th>
+                <th className="px-4 py-3 text-right">Comissão</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#F1ECE7]">
+              {visible.map((product) => {
+                const totalStock = product.variants.reduce(
+                  (sum, variant) => sum + variant.stocks.reduce((s, st) => s + st.stock, 0),
+                  0
+                );
+                const margin = product.priceInCents - product.costInCents;
+                const commission = Math.round(
+                  margin > 0 ? (margin * 1000) / 10000 : 0
+                );
+                const low = totalStock <= 5;
 
-function MoneyInput({
-  id,
-  label,
-  value,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const invalid = reaisToCents(value) === null;
-  return (
-    <div>
-      <label
-        htmlFor={id}
-        className="block text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase"
-      >
-        {label}
-      </label>
-      <input
-        id={id}
-        inputMode="decimal"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        aria-invalid={invalid}
-        className={`tabular-price mt-1 w-28 rounded-xl border bg-white/80 px-3 py-2 text-sm text-[#141210] focus:border-rosegold ${
-          invalid ? "border-copper" : "border-[#E4DED8]"
-        }`}
-      />
+                return (
+                  <tr
+                    key={product.slug}
+                    onClick={() => setSelected(product)}
+                    className="cursor-pointer transition-colors hover:bg-[#FDFAF8]"
+                  >
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-3">
+                        <div className="relative h-10 w-9 shrink-0 overflow-hidden rounded-md bg-[#F7F4F1]">
+                          <Image
+                            src={product.imageUrl}
+                            alt=""
+                            fill
+                            sizes="36px"
+                            className="object-contain"
+                            unoptimized
+                          />
+                        </div>
+                        <span className="font-medium text-[#141210]">{product.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 text-[#4A4440]">{product.categoryName}</td>
+                    <td className="tabular-price px-4 py-2.5 text-right text-[#141210]">
+                      {formatBRL(product.priceInCents)}
+                    </td>
+                    <td className="tabular-price px-4 py-2.5 text-right text-[#4A4440]">
+                      {formatBRL(product.costInCents)}
+                    </td>
+                    <td className="tabular-price px-4 py-2.5 text-right">
+                      <span className={low ? "font-semibold text-[#C0563E]" : "text-[#141210]"}>
+                        {totalStock}
+                      </span>
+                    </td>
+                    <td className="tabular-price px-4 py-2.5 text-right font-semibold text-[#C0563E]">
+                      {formatBRL(commission)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+
+        {pages > 1 && (
+          <div className="flex items-center justify-between gap-3 border-t border-[#EDE3D8] p-4">
+            <button
+              type="button"
+              disabled={safePage === 0}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              className="cursor-pointer rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440] disabled:opacity-40"
+            >
+              Anterior
+            </button>
+            <span className="tabular-price text-[11px] text-[#6E6660]">
+              Página {safePage + 1} de {pages}
+            </span>
+            <button
+              type="button"
+              disabled={safePage >= pages - 1}
+              onClick={() => setPage((p) => p + 1)}
+              className="cursor-pointer rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440] disabled:opacity-40"
+            >
+              Próxima
+            </button>
+          </div>
+        )}
+      </div>
+
+      {selected && <ProductDrawer product={selected} onClose={() => setSelected(null)} />}
     </div>
   );
 }
