@@ -431,6 +431,65 @@ export async function saveVariantAction(
   }
 }
 
+export async function addCategoryAction(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  if (!(await isSuperAdmin())) return { message: "Acesso negado." };
+
+  const name = String(formData.get("name") ?? "").trim();
+  const slug = String(formData.get("slug") ?? "").trim().toLowerCase();
+  if (!name || !slug) return { message: "Preencha nome e slug." };
+  if (slug === "todas") return { message: "Slug reservado." };
+
+  try {
+    if (await prisma.category.findUnique({ where: { slug } })) {
+      return { message: "Esse slug já existe." };
+    }
+    const last = await prisma.category.findFirst({
+      orderBy: { sortOrder: "desc" },
+      select: { sortOrder: true },
+    });
+    await prisma.category.create({
+      data: { slug, name, sortOrder: (last?.sortOrder ?? 0) + 1 },
+    });
+    revalidatePath("/admin/categorias");
+    revalidatePath("/admin/produtos/novo");
+    revalidatePath("/");
+    return { message: "Categoria adicionada." };
+  } catch (error) {
+    return {
+      message: error instanceof Error ? error.message : "Não foi possível adicionar.",
+    };
+  }
+}
+
+export async function removeCategoryAction(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  if (!(await isSuperAdmin())) return { message: "Acesso negado." };
+
+  const slug = String(formData.get("slug") ?? "").trim();
+  if (!slug) return { message: "Categoria não informada." };
+
+  try {
+    const inUse = await prisma.product.count({ where: { category: { slug } } });
+    if (inUse > 0) {
+      return { message: `Ainda há ${inUse} peça(s) nesta categoria.` };
+    }
+    await prisma.category.delete({ where: { slug } });
+    revalidatePath("/admin/categorias");
+    revalidatePath("/admin/produtos/novo");
+    revalidatePath("/");
+    return { message: "Categoria removida." };
+  } catch (error) {
+    return {
+      message: error instanceof Error ? error.message : "Não foi possível remover.",
+    };
+  }
+}
+
 async function isSuperAdmin(): Promise<boolean> {
   const session = await auth();
   return canManageAdmins(session?.user?.email, await getSuperAdminEmail());

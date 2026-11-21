@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   HardDrive,
   LayoutDashboard,
+  ListFilter,
   Package,
   ShoppingBag,
   Store,
@@ -28,6 +29,7 @@ const LINKS = [
   { href: "/admin", label: "Visão geral", icon: LayoutDashboard },
   { href: "/admin/pedidos", label: "Pedidos", icon: ShoppingBag },
   { href: "/admin/produtos", label: "Produtos", icon: Package },
+  { href: "/admin/categorias", label: "Categorias", icon: ListFilter },
   { href: "/admin/usuarios", label: "Administradores", icon: UserPlus },
   { href: "/admin/armazenamento", label: "Armazenamento", icon: HardDrive },
 ];

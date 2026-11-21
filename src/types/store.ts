@@ -1,10 +1,5 @@
-export type CategorySlug =
-  | "todas"
-  | "casacos"
-  | "alfaiataria"
-  | "vestidos"
-  | "tricot"
-  | "bolsas";
+/** "todas" é a opção sintética da vitrine; as demais vêm do banco. */
+export type CategorySlug = string;
 
 export interface Category {
   id: string;
@@ -53,7 +48,7 @@ export interface Product {
   name: string;
   subtitle: string;
   heroWord: string;
-  categorySlug: Exclude<CategorySlug, "todas">;
+  categorySlug: CategorySlug;
   categoryName: string;
   description: string;
   fabricDetails: string;

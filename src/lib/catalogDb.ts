@@ -55,7 +55,7 @@ export async function getProductsFromDb(): Promise<Product[]> {
       name: row.name,
       subtitle: row.subtitle,
       heroWord: row.heroWord,
-      categorySlug: row.category.slug as Exclude<CategorySlug, "todas">,
+      categorySlug: row.category.slug,
       categoryName: row.category.name,
       description: row.description,
       fabricDetails: row.fabricDetails,
