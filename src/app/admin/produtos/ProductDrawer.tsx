@@ -25,6 +25,13 @@ export function ProductDrawer({
 }) {
   const [price, setPrice] = useState(centsToInput(product.priceInCents));
   const [cost, setCost] = useState(centsToInput(product.costInCents));
+  const [activeVariantId, setActiveVariantId] = useState(
+    product.variants[0]?.id ?? ""
+  );
+
+  const activeVariant =
+    product.variants.find((variant) => variant.id === activeVariantId) ??
+    product.variants[0];
 
   const parsedPrice = reaisToCents(price);
   const parsedCost = reaisToCents(cost);
@@ -116,21 +123,50 @@ export function ProductDrawer({
           </section>
 
           <section className="mt-7 border-t border-[#EDE3D8] pt-5">
-            <h3 className="font-serif text-lg font-semibold">Cores e tamanhos</h3>
-            <p className="mt-0.5 text-[11px] text-[#6E6660]">
-              Cada cor tem seus próprios tamanhos e estoques. Edite rótulo e quantidade por cor.
-            </p>
-            <div className="mt-3 space-y-3">
-              {product.variants.map((variant) => (
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <h3 className="font-serif text-lg font-semibold">Cores e tamanhos</h3>
+              <span className="tabular-price text-[11px] text-[#6E6660]">
+                {product.variants.length} {product.variants.length === 1 ? "cor" : "cores"}
+              </span>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2" role="tablist" aria-label="Cores da peça">
+              {product.variants.map((variant) => {
+                const active = activeVariant?.id === variant.id;
+                return (
+                  <button
+                    key={variant.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setActiveVariantId(variant.id)}
+                    className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+                      active
+                        ? "border-[#161311] bg-[#161311] text-white"
+                        : "border-[#E4DED8] bg-white text-[#4A4440] hover:border-rosegold hover:text-[#141210]"
+                    }`}
+                  >
+                    <span
+                      className="inline-block h-3 w-3 rounded-full border border-black/10"
+                      style={{ backgroundColor: variant.swatchHex }}
+                    />
+                    {variant.colorName}
+                  </button>
+                );
+              })}
+            </div>
+
+            {activeVariant && (
+              <div className="mt-4">
                 <VariantEditor
-                  key={variant.id}
+                  key={activeVariant.id}
                   product={product}
-                  variant={variant}
+                  variant={activeVariant}
                   price={price}
                   cost={cost}
                 />
-              ))}
-            </div>
+              </div>
+            )}
 
             <AddVariantForm productSlug={product.slug} />
           </section>

@@ -61,17 +61,12 @@ export function VariantEditor({
           </button>
         </div>
 
-        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1.5">
-          <span className="text-[10px] font-semibold tracking-wider text-[#6E6660] uppercase">
-            Tamanho
-          </span>
-          <span className="text-[10px] font-semibold tracking-wider text-[#6E6660] uppercase">
-            Qtd.
-          </span>
-          <span />
-
+        <div className="flex flex-wrap gap-2">
           {sizes.map((size, index) => (
-            <div key={index} className="contents">
+            <div
+              key={index}
+              className="flex items-center gap-1.5 rounded-xl border border-[#EDE3D8] bg-white p-1.5"
+            >
               <input
                 value={size.label}
                 onChange={(event) =>
@@ -83,8 +78,9 @@ export function VariantEditor({
                 }
                 aria-label={`Tamanho da cor ${variant.colorName}`}
                 placeholder="Tam."
-                className="tabular-price w-16 rounded-lg border border-[#E4DED8] bg-white px-2 py-1.5 text-center text-xs text-[#141210] placeholder:text-[#B5ACA6]"
+                className="tabular-price w-14 rounded-md border border-[#E4DED8] bg-white px-1.5 py-1 text-center text-xs text-[#141210] placeholder:text-[#B5ACA6]"
               />
+              <span className="text-[10px] text-[#9A918B]">qtd.</span>
               <input
                 type="number"
                 min={0}
@@ -98,15 +94,15 @@ export function VariantEditor({
                   )
                 }
                 aria-label={`Quantidade do tamanho ${size.label} em ${variant.colorName}`}
-                className="tabular-price w-full max-w-20 rounded-lg border border-[#E4DED8] bg-white px-2 py-1.5 text-center text-xs text-[#141210]"
+                className="tabular-price w-12 rounded-md border border-[#E4DED8] bg-white px-1 py-1 text-center text-xs text-[#141210]"
               />
               <button
                 type="button"
                 onClick={() => setSizes((prev) => prev.filter((_, i) => i !== index))}
                 aria-label={`Remover tamanho ${size.label || index + 1} da cor ${variant.colorName}`}
-                className="cursor-pointer rounded-full border border-[#E4DED8] px-2 py-1 text-[11px] text-[#9A918B] transition-colors hover:border-[#A8432F] hover:text-[#A8432F]"
+                className="cursor-pointer rounded-md px-1.5 py-1 text-xs text-[#9A918B] transition-colors hover:bg-[#A8432F]/10 hover:text-[#A8432F]"
               >
-                Remover
+                ×
               </button>
             </div>
           ))}

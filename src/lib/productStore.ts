@@ -21,6 +21,7 @@ export interface AdminProductRow {
     id: string;
     colorSlug: string;
     colorName: string;
+    swatchHex: string;
     imageUrl: string;
     stocks: Array<{ sizeLabel: string; stock: number }>;
   }>;
@@ -56,6 +57,7 @@ export async function getAdminProducts(): Promise<AdminProductRow[]> {
       id: variant.id,
       colorSlug: variant.colorSlug,
       colorName: variant.colorName,
+      swatchHex: variant.swatchHex,
       imageUrl: variant.cutoutImageUrl,
       stocks: variant.stocks
         .map((stock) => ({ sizeLabel: stock.sizeLabel, stock: stock.stock }))
