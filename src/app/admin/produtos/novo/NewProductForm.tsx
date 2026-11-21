@@ -52,9 +52,16 @@ export function NewProductForm({
   const [cutout, setCutout] = useState<File | null>(null);
   const [imageName, setImageName] = useState("");
   const [cutStatus, setCutStatus] = useState("");
+  const [sizeRows, setSizeRows] = useState<Array<{ sizeLabel: string; stock: string }>>([
+    { sizeLabel: "", stock: "0" },
+  ]);
 
   const action = (formData: FormData) => {
     if (cutout) formData.set("image", cutout, cutout.name);
+    const sizes = sizeRows
+      .filter((row) => row.sizeLabel.trim())
+      .map((row) => `${row.sizeLabel.trim()}:${row.stock}`);
+    formData.set("stocks", sizes.join(","));
     return baseAction(formData);
   };
 
@@ -189,12 +196,68 @@ export function NewProductForm({
             Tema claro
           </label>
         </div>
-        <div className="mt-4">
-          <Field
-            name="stocks"
-            label="Estoque (PP:3,P:5,M:4,G:2)"
-            placeholder="PP:3,P:5,M:4,G:2"
-          />
+        <div className="mt-4 sm:col-span-2">
+          <span className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
+            Estoque por tamanho
+          </span>
+          <div className="mt-2 space-y-2">
+            {sizeRows.map((row, index) => (
+              <div key={index} className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 rounded-lg border border-[#E4DED8] bg-white px-2 py-1.5">
+                  <input
+                    value={row.sizeLabel}
+                    onChange={(event) =>
+                      setSizeRows((prev) =>
+                        prev.map((item, i) =>
+                          i === index ? { ...item, sizeLabel: event.target.value } : item
+                        )
+                      )
+                    }
+                    placeholder="Tam."
+                    aria-label={`Tamanho ${index + 1}`}
+                    className="tabular-price w-14 rounded-md border border-[#E4DED8] bg-white px-2 py-1 text-center text-xs text-[#141210]"
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={row.stock}
+                    onChange={(event) =>
+                      setSizeRows((prev) =>
+                        prev.map((item, i) =>
+                          i === index ? { ...item, stock: event.target.value } : item
+                        )
+                      )
+                    }
+                    aria-label={`Quantidade do tamanho ${row.sizeLabel || index + 1}`}
+                    className="tabular-price w-14 rounded-md border border-[#E4DED8] bg-white px-2 py-1 text-center text-xs text-[#141210]"
+                  />
+                  {sizeRows.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setSizeRows((prev) => prev.filter((_, i) => i !== index))}
+                      aria-label={`Remover tamanho ${row.sizeLabel || index + 1}`}
+                      className="cursor-pointer rounded-md px-1 py-0.5 text-sm text-[#6E6660] hover:text-[#A8432F]"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                {index === sizeRows.length - 1 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSizeRows((prev) => [...prev, { sizeLabel: "", stock: "0" }])
+                    }
+                    aria-label="Adicionar tamanho"
+                    className="cursor-pointer rounded-md px-1 py-0.5 text-sm text-[#6E6660] hover:text-[#A8432F]"
+                  >
+                    +
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -205,7 +268,7 @@ export function NewProductForm({
       <div className="flex justify-end">
         <button
           type="submit"
-          disabled={pending}
+          disabled={pending || sizeRows.every((row) => !row.sizeLabel.trim())}
           className="cursor-pointer rounded-full bg-[#161311] px-6 py-3 text-xs font-semibold text-cream transition-transform hover:-translate-y-0.5 disabled:opacity-50"
         >
           {pending ? "Salvando..." : "Criar peça"}
