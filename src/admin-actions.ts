@@ -26,6 +26,7 @@ import {
   type SizeSystem,
 } from "@/lib/productStore";
 import { StorageError, setStorageLimitBytes, uploadImage } from "@/lib/r2Store";
+import { prisma } from "@/lib/prisma";
 
 export type AdminActionState = { message: string };
 
@@ -392,9 +393,23 @@ export async function saveVariantAction(
 
     await saveProducts([{ slug, priceInCents, costInCents, stocks: [] }]);
     await replaceVariantSizes(slug, variantId, sizes);
+
+    const image = formData.get("image");
+    let imageMessage = "";
+    if (image instanceof File && image.size > 0) {
+      const variant = await prisma.productVariant.findFirst({
+        where: { id: variantId, product: { slug } },
+        select: { colorSlug: true },
+      });
+      if (!variant) throw new Error("Cor não encontrada.");
+      const url = await uploadImage(image, slug, variant.colorSlug);
+      await setVariantImage(slug, variant.colorSlug, url);
+      imageMessage = " Imagem enviada.";
+    }
+
     revalidatePath("/admin/produtos");
     revalidatePath("/");
-    return { message: "Cor salva." };
+    return { message: `Cor salva.${imageMessage}` };
   } catch (error) {
     return {
       message: error instanceof Error ? error.message : "Não foi possível salvar a cor.",
