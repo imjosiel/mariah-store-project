@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1174.0",
+    "@imgly/background-removal": "^1.7.0",
     "@prisma/client": "^6.19.3",
     "lucide-react": "^1.74.0",
     "motion": "^14.14.0",
