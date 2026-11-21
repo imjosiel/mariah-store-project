@@ -225,7 +225,7 @@ function StockPanel({ products }: { products: AdminProductRow[] }) {
         <div>
           <h2 className="font-serif text-xl font-semibold">Estoque</h2>
           <p className="mt-0.5 text-[11px] text-[#6E6660]">
-            Baixa automática ao confirmar o pedido. Peças com 2 unidades ou menos.
+            Peças com 2 unidades ou menos.
           </p>
         </div>
         <span className="tabular-price text-xs font-semibold text-[#4A4440]">

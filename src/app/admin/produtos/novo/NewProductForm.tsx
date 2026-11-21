@@ -149,7 +149,7 @@ export function NewProductForm({
           <Field name="swatchHex" label="Hex da cor" placeholder="#6C2E3B" />
           <div className="sm:col-span-2">
             <span className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
-              Imagem da peça (fundo removido automaticamente)
+              Imagem da peça
             </span>
             <div className="mt-1 flex flex-wrap items-center gap-2">
               <label className="flex cursor-pointer items-center gap-1.5 rounded-full border border-[#E4DED8] bg-white px-3 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-rosegold hover:text-[#141210]">

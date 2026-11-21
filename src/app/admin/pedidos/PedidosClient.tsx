@@ -95,9 +95,6 @@ export function PedidosClient({ orders }: { orders: OrderView[] }) {
             Maria&apos;s Store · Admin
           </p>
           <h1 className="mt-1 font-serif text-2xl font-semibold">Pedidos</h1>
-          <p className="mt-0.5 text-[11px] text-[#6E6660]">
-            Confirme para calcular a comissão e baixar o estoque.
-          </p>
         </div>
         <div className="flex items-center gap-3">
           <button

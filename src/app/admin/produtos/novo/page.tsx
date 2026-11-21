@@ -23,9 +23,6 @@ export default async function NewProductPage() {
         Voltar às peças
       </Link>
       <h1 className="mt-5 font-serif text-3xl font-semibold">Nova peça</h1>
-      <p className="mt-1 text-xs text-[#6E6660]">
-        Cadastra produto, primeira cor/tamanho e estoque. O resto pode ser ajustado depois.
-      </p>
       <NewProductForm categories={categories} />
     </div>
   );
