@@ -18,6 +18,7 @@ export interface AdminProductRow {
   priceInCents: number;
   costInCents: number;
   variants: Array<{
+    id: string;
     colorSlug: string;
     colorName: string;
     imageUrl: string;
@@ -52,6 +53,7 @@ export async function getAdminProducts(): Promise<AdminProductRow[]> {
     priceInCents: row.priceInCents,
     costInCents: row.costInCents,
     variants: row.variants.map((variant) => ({
+      id: variant.id,
       colorSlug: variant.colorSlug,
       colorName: variant.colorName,
       imageUrl: variant.cutoutImageUrl,
@@ -253,27 +255,123 @@ export async function setVariantImage(
   if (result.count === 0) throw new Error("Cor não encontrada nesta peça");
 }
 
-export type SizeSystem = "numbers" | "letters" | "unique";
+export type SizeSystem =
+  | "numbers"
+  | "numbers-plus"
+  | "letters"
+  | "letters-plus"
+  | "unique"
+  | "custom";
 
-export const SIZE_LABELS: Record<SizeSystem, string[]> = {
+export const SIZE_LABELS: Record<Exclude<SizeSystem, "custom">, string[]> = {
   numbers: ["36", "38", "40", "42"],
+  "numbers-plus": ["34", "36", "38", "40", "42", "44"],
   letters: ["PP", "P", "M", "G"],
+  "letters-plus": ["PP", "P", "M", "G", "GG", "EGG"],
   unique: ["Único"],
 };
 
+/** Ordem canônica para ordenar rótulos antes de remapear o estoque. */
+const SIZE_RANK: Record<string, number> = {
+  PP: 1,
+  P: 2,
+  M: 3,
+  G: 4,
+  GG: 5,
+  EGG: 6,
+  Único: 1,
+  "34": 1,
+  "36": 2,
+  "37": 3,
+  "38": 4,
+  "40": 5,
+  "42": 6,
+  "44": 7,
+};
+
+function rank(label: string): number {
+  return SIZE_RANK[label.toUpperCase()] ?? SIZE_RANK[label] ?? 999;
+}
+
+function sortLabels(labels: readonly string[]): string[] {
+  return [...labels].sort((a, b) => rank(a) - rank(b));
+}
+
 export function detectSizeSystem(labels: readonly string[]): SizeSystem {
   if (labels.includes("Único")) return "unique";
-  return labels.some((label) => /[A-Za-z]/.test(label)) ? "letters" : "numbers";
+  const normalized = sortLabels(labels);
+  const exact = (Object.entries(SIZE_LABELS) as Array<
+    [Exclude<SizeSystem, "custom">, string[]]
+  >).find(([, value]) => value.join("|") === normalized.join("|"));
+  if (exact) return exact[0];
+  return "custom";
+}
+
+export interface SizeChange {
+  variantId: string;
+  labels: string[];
 }
 
 /**
- * Troca o sistema de tamanho de uma peça.
- * Preserva o estoque por posição (36→PP, 38→P, 40→M, 42→G) e
- * remove/adiciona linhas conforme o novo conjunto de rótulos.
+ * Troca os rótulos de tamanho preservando o estoque por posição canônica.
+ * Serve tanto para presets quanto para edição livre (ex.: corrigir 38→37).
+ * Pedidos antigos não são alterados: OrderItem guarda o sizeLabel original.
  */
+export async function setProductSizes(
+  productSlug: string,
+  changes: readonly SizeChange[]
+): Promise<void> {
+  const product = await prisma.product.findUnique({
+    where: { slug: productSlug },
+    select: { id: true },
+  });
+  if (!product) throw new Error("Peça não encontrada");
+
+  await prisma.$transaction(async (tx) => {
+    for (const change of changes) {
+      const variant = await tx.productVariant.findFirst({
+        where: { id: change.variantId, productId: product.id },
+        select: { id: true },
+      });
+      if (!variant) continue;
+
+      const labels = change.labels.map((label) => label.trim()).filter(Boolean);
+      if (labels.length === 0 || new Set(labels).size !== labels.length) {
+        throw new Error("Tamanhos inválidos ou repetidos.");
+      }
+
+      const existing = await tx.variantStock.findMany({
+        where: { variantId: variant.id },
+      });
+      const byLabel = new Map(existing.map((stock) => [stock.sizeLabel, stock.stock]));
+      const sorted = [...existing].sort(
+        (a, b) => rank(a.sizeLabel) - rank(b.sizeLabel)
+      );
+      const positional = sorted.map((stock) => stock.stock);
+
+      // Rótulos mantidos preservam seu estoque; rótulos novos (ou renomeados,
+      // como 38→37) herdão a quantidade da mesma posição. Isso cobre tanto
+      // corrigir um digitação quanto adicionar um tamanho que faltava.
+      const resolved = labels.map((label, index) => ({
+        label,
+        stock: byLabel.has(label) ? byLabel.get(label)! : (positional[index] ?? 0),
+      }));
+
+      await tx.variantStock.deleteMany({ where: { variantId: variant.id } });
+      await tx.variantStock.createMany({
+        data: resolved.map((item) => ({
+          variantId: variant.id,
+          sizeLabel: item.label,
+          stock: item.stock,
+        })),
+      });
+    }
+  });
+}
+
 export async function setProductSizeSystem(
   productSlug: string,
-  system: SizeSystem
+  system: Exclude<SizeSystem, "custom">
 ): Promise<void> {
   const product = await prisma.product.findUnique({
     where: { slug: productSlug },
@@ -283,33 +381,16 @@ export async function setProductSizeSystem(
 
   const variants = await prisma.productVariant.findMany({
     where: { productId: product.id },
-    select: { id: true },
+    select: { id: true, stocks: { select: { sizeLabel: true } } },
   });
-  const labels = SIZE_LABELS[system];
 
-  await prisma.$transaction(async (tx) => {
-    for (const variant of variants) {
-      const existing = await tx.variantStock.findMany({
-        where: { variantId: variant.id },
-      });
-      const source = detectSizeSystem(existing.map((stock) => stock.sizeLabel));
-      const sourceOrder = SIZE_LABELS[source];
-      const sorted = [...existing].sort(
-        (a, b) => sourceOrder.indexOf(a.sizeLabel) - sourceOrder.indexOf(b.sizeLabel)
-      );
-      const quantities = sorted.map((stock) => stock.stock);
-
-      await tx.variantStock.deleteMany({ where: { variantId: variant.id } });
-
-      await tx.variantStock.createMany({
-        data: labels.map((label, index) => ({
-          variantId: variant.id,
-          sizeLabel: label,
-          stock: quantities[index] ?? 0,
-        })),
-      });
-    }
-  });
+  await setProductSizes(
+    productSlug,
+    variants.map((variant) => ({
+      variantId: variant.id,
+      labels: SIZE_LABELS[system],
+    }))
+  );
 }
 
 export async function resetProducts(): Promise<void> {

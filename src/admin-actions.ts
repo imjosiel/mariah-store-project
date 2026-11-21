@@ -16,6 +16,7 @@ import {
   createProduct,
   resetProducts,
   saveProducts,
+  setProductSizes,
   setProductSizeSystem,
   setVariantImage,
   type NewProductInput,
@@ -291,18 +292,63 @@ export async function setSizeSystemAction(
 
   const slug = String(formData.get("productSlug") ?? "");
   const system = String(formData.get("sizeSystem") ?? "") as SizeSystem;
-  if (!slug || !["numbers", "letters", "unique"].includes(system)) {
+  const presets: SizeSystem[] = [
+    "numbers",
+    "numbers-plus",
+    "letters",
+    "letters-plus",
+    "unique",
+  ];
+  if (!slug || !presets.includes(system)) {
     return { message: "Dados inválidos." };
   }
 
   try {
-    await setProductSizeSystem(slug, system);
+    await setProductSizeSystem(slug, system as Exclude<SizeSystem, "custom">);
     revalidatePath("/admin/produtos");
     revalidatePath("/");
     return { message: "Tamanhos atualizados." };
   } catch (error) {
     return {
       message: error instanceof Error ? error.message : "Não foi possível alterar os tamanhos.",
+    };
+  }
+}
+
+export async function setSizesAction(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  if (!(await isSuperAdmin())) return { message: "Acesso negado." };
+
+  const slug = String(formData.get("productSlug") ?? "");
+  if (!slug) return { message: "Peça não informada." };
+
+  try {
+    const parsed: unknown = JSON.parse(String(formData.get("changes") ?? "[]"));
+    if (!Array.isArray(parsed)) return { message: "Dados inválidos." };
+
+    const changes = parsed.map((item: unknown) => {
+      if (!item || typeof item !== "object") throw new Error("Dados inválidos.");
+      const entry = item as Record<string, unknown>;
+      if (
+        typeof entry.variantId !== "string" ||
+        !Array.isArray(entry.labels) ||
+        !entry.labels.every((label) => typeof label === "string")
+      ) {
+        throw new Error("Dados inválidos.");
+      }
+      return { variantId: entry.variantId, labels: entry.labels as string[] };
+    });
+
+    if (changes.length === 0) return { message: "Nenhum tamanho informado." };
+    await setProductSizes(slug, changes);
+    revalidatePath("/admin/produtos");
+    revalidatePath("/");
+    return { message: "Tamanhos atualizados." };
+  } catch (error) {
+    return {
+      message: error instanceof Error ? error.message : "Não foi possível salvar os tamanhos.",
     };
   }
 }
