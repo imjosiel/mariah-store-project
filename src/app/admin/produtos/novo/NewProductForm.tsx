@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 
 import { createProductAction } from "@/admin-actions";
 import { makeCutout } from "@/lib/cutout";
+import { extractDominantColor } from "@/lib/dominantColor";
 
 const GLASS =
   "rounded-[20px] border border-[#E4DED8] bg-white/90 p-5 shadow-[0_10px_32px_-22px_rgba(59,35,22,0.28)] sm:p-6";
@@ -52,6 +53,7 @@ export function NewProductForm({
   const [cutout, setCutout] = useState<File | null>(null);
   const [imageName, setImageName] = useState("");
   const [cutStatus, setCutStatus] = useState("");
+  const [swatch, setSwatch] = useState("#6C2E3B");
   const [sizeRows, setSizeRows] = useState<Array<{ sizeLabel: string; stock: string }>>([
     { sizeLabel: "", stock: "0" },
   ]);
@@ -153,7 +155,28 @@ export function NewProductForm({
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Field name="colorName" label="Nome da cor" placeholder="Vinho Rosé" />
           <Field name="colorSlug" label="Slug da cor" placeholder="vinho-rose" />
-          <Field name="swatchHex" label="Hex da cor" placeholder="#6C2E3B" />
+          <label className="block">
+            <span className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
+              Cor da amostra
+            </span>
+            <div className="mt-1 flex items-center gap-2">
+              <input
+                type="color"
+                name="swatch-color"
+                value={swatch}
+                onChange={(event) => setSwatch(event.target.value)}
+                className="h-9 w-12 cursor-pointer rounded-lg border border-[#E4DED8] bg-white"
+                aria-label="Cor da amostra da peça"
+              />
+              <input
+                name="swatchHex"
+                value={swatch}
+                onChange={(event) => setSwatch(event.target.value)}
+                className={input}
+                placeholder="#6C2E3B"
+              />
+            </div>
+          </label>
           <div className="sm:col-span-2">
             <span className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
               Imagem da peça
@@ -176,6 +199,8 @@ export function NewProductForm({
                       const result = await makeCutout(file, setCutStatus);
                       setCutout(result);
                       setImageName(result.name);
+                      const suggested = await extractDominantColor(result);
+                      if (suggested) setSwatch(suggested);
                     } catch {
                       setCutStatus("Não foi possível remover o fundo.");
                     } finally {
