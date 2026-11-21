@@ -14,6 +14,7 @@ import {
 import {
   addVariant,
   createProduct,
+  replaceVariantSizes,
   resetProducts,
   saveProducts,
   setProductSizes,
@@ -349,6 +350,54 @@ export async function setSizesAction(
   } catch (error) {
     return {
       message: error instanceof Error ? error.message : "Não foi possível salvar os tamanhos.",
+    };
+  }
+}
+
+export async function saveVariantAction(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  if (!(await isSuperAdmin())) return { message: "Acesso negado." };
+
+  const slug = String(formData.get("productSlug") ?? "");
+  const variantId = String(formData.get("variantId") ?? "");
+  if (!slug || !variantId) return { message: "Peça ou cor não informada." };
+
+  const priceInCents = reaisToCents(String(formData.get("price") ?? ""));
+  const costInCents = reaisToCents(String(formData.get("cost") ?? ""));
+  if (priceInCents === null || costInCents === null) {
+    return { message: "Preço ou custo inválido." };
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(String(formData.get("sizes") ?? "[]"));
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return { message: "Informe ao menos um tamanho." };
+    }
+
+    const sizes = parsed.map((item: unknown) => {
+      if (!item || typeof item !== "object") throw new Error("Dados inválidos.");
+      const entry = item as Record<string, unknown>;
+      if (
+        typeof entry.label !== "string" ||
+        typeof entry.stock !== "number" ||
+        !Number.isInteger(entry.stock) ||
+        entry.stock < 0
+      ) {
+        throw new Error("Dados inválidos.");
+      }
+      return { label: entry.label, stock: entry.stock };
+    });
+
+    await saveProducts([{ slug, priceInCents, costInCents, stocks: [] }]);
+    await replaceVariantSizes(slug, variantId, sizes);
+    revalidatePath("/admin/produtos");
+    revalidatePath("/");
+    return { message: "Cor salva." };
+  } catch (error) {
+    return {
+      message: error instanceof Error ? error.message : "Não foi possível salvar a cor.",
     };
   }
 }

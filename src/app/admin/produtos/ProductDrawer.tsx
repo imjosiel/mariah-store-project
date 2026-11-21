@@ -1,24 +1,17 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
 
-import { saveProductsAction } from "@/admin-actions";
 import { formatBRL } from "@/data/catalog";
 import { calculateCommission } from "@/domain/commission";
 import { reaisToCents } from "@/domain/money";
-import {
-  detectSizeSystem,
-  type AdminProductRow,
-  type ProductUpdate,
-} from "@/lib/productStore";
+import type { AdminProductRow } from "@/lib/productStore";
 
 import { AddVariantForm } from "./AddVariantForm";
-import { ImageUpload } from "./ImageUpload";
-import { SizeSystemPicker } from "./SizeSystemPicker";
+import { VariantEditor } from "./VariantEditor";
 
-const stockKey = (colorSlug: string, sizeLabel: string) => `${colorSlug}:${sizeLabel}`;
 const centsToInput = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 const moneyInput =
   "tabular-price mt-1 w-28 rounded-xl border border-[#E4DED8] bg-white px-3 py-2 text-sm text-[#141210] focus:border-rosegold";
@@ -30,49 +23,16 @@ export function ProductDrawer({
   product: AdminProductRow;
   onClose: () => void;
 }) {
-  const [draft, setDraft] = useState({
-    price: centsToInput(product.priceInCents),
-    cost: centsToInput(product.costInCents),
-    stocks: Object.fromEntries(
-      product.variants.flatMap((variant) =>
-        variant.stocks.map((stock) => [
-          stockKey(variant.colorSlug, stock.sizeLabel),
-          String(stock.stock),
-        ])
-      )
-    ) as Record<string, string>,
-  });
-  const [state, action, pending] = useActionState(saveProductsAction, { message: "" });
+  const [price, setPrice] = useState(centsToInput(product.priceInCents));
+  const [cost, setCost] = useState(centsToInput(product.costInCents));
 
-  const price = reaisToCents(draft.price);
-  const cost = reaisToCents(draft.cost);
-  const invalid = price === null || cost === null;
-
-  const update: ProductUpdate = {
-    slug: product.slug,
-    priceInCents: price ?? product.priceInCents,
-    costInCents: cost ?? product.costInCents,
-    stocks: product.variants.flatMap((variant) =>
-      variant.stocks.map((stock) => {
-        const raw = draft.stocks[stockKey(variant.colorSlug, stock.sizeLabel)] ?? "0";
-        const value = Number(raw);
-        return {
-          colorSlug: variant.colorSlug,
-          sizeLabel: stock.sizeLabel,
-          stock: Number.isInteger(value) && value >= 0 ? value : stock.stock,
-        };
-      })
-    ),
-  };
-
-  const currentSystem = detectSizeSystem(
-    product.variants[0]?.stocks.map((stock) => stock.sizeLabel) ?? []
-  );
-
-  const margin = invalid ? 0 : price - cost;
+  const parsedPrice = reaisToCents(price);
+  const parsedCost = reaisToCents(cost);
+  const invalid = parsedPrice === null || parsedCost === null;
+  const margin = invalid ? 0 : parsedPrice - parsedCost;
   const commission = calculateCommission({
-    costInCents: cost ?? 0,
-    receivedInCents: price ?? 0,
+    costInCents: parsedCost ?? 0,
+    receivedInCents: parsedPrice ?? 0,
   });
 
   return (
@@ -117,14 +77,17 @@ export function ProductDrawer({
         <div className="min-h-0 flex-1 overflow-y-auto p-6">
           <section>
             <h3 className="font-serif text-lg font-semibold">Valores</h3>
+            <p className="mt-0.5 text-[11px] text-[#6E6660]">
+              Usados em todas as cores. Salve ajustando uma cor.
+            </p>
             <div className="mt-3 flex flex-wrap items-end gap-3">
               <label className="block">
                 <span className="block text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
                   Preço (R$)
                 </span>
                 <input
-                  value={draft.price}
-                  onChange={(event) => setDraft((d) => ({ ...d, price: event.target.value }))}
+                  value={price}
+                  onChange={(event) => setPrice(event.target.value)}
                   inputMode="decimal"
                   className={moneyInput}
                 />
@@ -134,8 +97,8 @@ export function ProductDrawer({
                   Custo (R$)
                 </span>
                 <input
-                  value={draft.cost}
-                  onChange={(event) => setDraft((d) => ({ ...d, cost: event.target.value }))}
+                  value={cost}
+                  onChange={(event) => setCost(event.target.value)}
                   inputMode="decimal"
                   className={moneyInput}
                 />
@@ -153,63 +116,37 @@ export function ProductDrawer({
           </section>
 
           <section className="mt-7 border-t border-[#EDE3D8] pt-5">
-            <h3 className="font-serif text-lg font-semibold">Cores e estoque</h3>
+            <h3 className="font-serif text-lg font-semibold">Cores e tamanhos</h3>
+            <p className="mt-0.5 text-[11px] text-[#6E6660]">
+              Cada cor tem seus próprios tamanhos e estoques. Edite rótulo e quantidade por cor.
+            </p>
             <div className="mt-3 space-y-3">
               {product.variants.map((variant) => (
-                <div key={variant.colorSlug} className="rounded-xl bg-[#FDFAF8] p-4">
-                  <p className="mb-3 text-xs font-semibold text-[#141210]">{variant.colorName}</p>
-                  <div className="flex flex-wrap gap-3">
-                    {variant.stocks.map((stock) => {
-                      const key = stockKey(variant.colorSlug, stock.sizeLabel);
-                      return (
-                        <label key={key} className="flex items-center gap-1.5 text-xs text-[#4A4440]">
-                          {stock.sizeLabel}
-                          <input
-                            type="number"
-                            min={0}
-                            step={1}
-                            value={draft.stocks[key] ?? "0"}
-                            onChange={(event) =>
-                              setDraft((d) => ({
-                                ...d,
-                                stocks: { ...d.stocks, [key]: event.target.value },
-                              }))
-                            }
-                            className="tabular-price w-14 rounded-lg border border-[#E4DED8] bg-white px-2 py-1 text-center text-xs text-[#141210]"
-                          />
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <ImageUpload
-                    productSlug={product.slug}
-                    colorSlug={variant.colorSlug}
-                    currentUrl={variant.imageUrl}
-                  />
-                </div>
+                <VariantEditor
+                  key={variant.id}
+                  product={product}
+                  variant={variant}
+                  price={price}
+                  cost={cost}
+                />
               ))}
             </div>
 
             <AddVariantForm productSlug={product.slug} />
           </section>
-
-          <SizeSystemPicker product={product} current={currentSystem} />
         </div>
 
         <footer className="flex items-center justify-between gap-3 border-t border-[#EDE3D8] bg-[#FDFAF8] px-6 py-4">
           <p className="text-[10px] text-[#6E6660]">
-            {invalid ? "Confira os valores." : "Alterações salvas no banco."}
+            {invalid ? "Confira os valores." : "Preço e custo entram ao salvar uma cor."}
           </p>
-          <form action={action} id="product-drawer-form">
-            <input type="hidden" name="products" value={JSON.stringify([update])} />
-            <button
-              type="submit"
-              disabled={invalid || pending}
-              className="cursor-pointer rounded-full bg-[#161311] px-6 py-3 text-xs font-semibold text-white transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {pending ? "Salvando..." : state.message || "Salvar alterações"}
-            </button>
-          </form>
+          <button
+            type="button"
+            onClick={onClose}
+            className="cursor-pointer rounded-full border border-[#E4DED8] px-5 py-2.5 text-xs font-semibold text-[#4A4440] hover:text-[#141210]"
+          >
+            Fechar
+          </button>
         </footer>
       </aside>
     </div>

@@ -369,6 +369,44 @@ export async function setProductSizes(
   });
 }
 
+/** Substitui os tamanhos de UMA variação pelos rótulos e quantidades exatos informados. */
+export async function replaceVariantSizes(
+  productSlug: string,
+  variantId: string,
+  sizes: readonly { label: string; stock: number }[]
+): Promise<void> {
+  const product = await prisma.product.findUnique({
+    where: { slug: productSlug },
+    select: { id: true },
+  });
+  if (!product) throw new Error("Peça não encontrada");
+
+  const variant = await prisma.productVariant.findFirst({
+    where: { id: variantId, productId: product.id },
+    select: { id: true },
+  });
+  if (!variant) throw new Error("Cor não encontrada nesta peça");
+
+  const labels = sizes.map((size) => size.label.trim()).filter(Boolean);
+  if (labels.length === 0 || new Set(labels).size !== labels.length) {
+    throw new Error("Tamanhos inválidos ou repetidos.");
+  }
+  if (sizes.some((size) => !Number.isInteger(size.stock) || size.stock < 0)) {
+    throw new Error("Quantidade inválida.");
+  }
+
+  await prisma.$transaction([
+    prisma.variantStock.deleteMany({ where: { variantId } }),
+    prisma.variantStock.createMany({
+      data: sizes.map((size) => ({
+        variantId,
+        sizeLabel: size.label.trim(),
+        stock: size.stock,
+      })),
+    }),
+  ]);
+}
+
 export async function setProductSizeSystem(
   productSlug: string,
   system: Exclude<SizeSystem, "custom">
