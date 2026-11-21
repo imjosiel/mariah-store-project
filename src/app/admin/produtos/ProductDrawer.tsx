@@ -67,16 +67,16 @@ export function ProductDrawer({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         type="button"
         aria-label="Fechar detalhes da peça"
         onClick={onClose}
-        className="absolute inset-0 cursor-default bg-[#1A1512]/35 backdrop-blur-[2px]"
+        className="absolute inset-0 cursor-default bg-[#1A1512]/40 backdrop-blur-[3px]"
       />
 
-      <aside className="relative flex h-full w-full max-w-xl flex-col border-l border-[#E4DED8] bg-white shadow-2xl">
-        <header className="flex items-start justify-between gap-4 border-b border-[#EDE3D8] p-5">
+      <aside className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[20px] border border-[#E4DED8] bg-white shadow-2xl">
+        <header className="flex items-start justify-between gap-4 border-b border-[#EDE3D8] bg-[#FDFAF8] px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="relative h-14 w-12 shrink-0 overflow-hidden rounded-lg bg-[#F7F4F1]">
               <Image
@@ -105,9 +105,7 @@ export function ProductDrawer({
           </button>
         </header>
 
-        <form action={action} className="flex-1 overflow-y-auto p-5" id="product-drawer-form">
-          <input type="hidden" name="products" value={JSON.stringify([update])} />
-
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">
           <section>
             <h3 className="font-serif text-lg font-semibold">Valores</h3>
             <div className="mt-3 flex flex-wrap items-end gap-3">
@@ -185,20 +183,22 @@ export function ProductDrawer({
 
             <AddVariantForm productSlug={product.slug} />
           </section>
-        </form>
+        </div>
 
-        <footer className="flex items-center justify-between gap-3 border-t border-[#EDE3D8] p-5">
+        <footer className="flex items-center justify-between gap-3 border-t border-[#EDE3D8] bg-[#FDFAF8] px-6 py-4">
           <p className="text-[10px] text-[#6E6660]">
             {invalid ? "Confira os valores." : "Alterações salvas no banco."}
           </p>
-          <button
-            type="submit"
-            form="product-drawer-form"
-            disabled={invalid || pending}
-            className="cursor-pointer rounded-full bg-[#161311] px-6 py-3 text-xs font-semibold text-white transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {pending ? "Salvando..." : state.message || "Salvar alterações"}
-          </button>
+          <form action={action} id="product-drawer-form">
+            <input type="hidden" name="products" value={JSON.stringify([update])} />
+            <button
+              type="submit"
+              disabled={invalid || pending}
+              className="cursor-pointer rounded-full bg-[#161311] px-6 py-3 text-xs font-semibold text-white transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {pending ? "Salvando..." : state.message || "Salvar alterações"}
+            </button>
+          </form>
         </footer>
       </aside>
     </div>
