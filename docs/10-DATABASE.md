@@ -40,6 +40,7 @@ npm run verify
   (`prisma → @prisma/config → effect`). Não entra no bundle de produção (`@prisma/client`).
 - Fotos enviadas pelo ERP em **Cloudflare R2** (fora do repositório): campo "Trocar imagem" em cada cor, em `/admin/produtos`. Requer `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` e `R2_PUBLIC_URL` na Vercel; `next.config.ts` autoriza o hostname de `R2_PUBLIC_URL`.
 - O fundo da foto é removido **no navegador** por `@imgly/background-removal` (modelo `isnet_quint8`) antes do upload, gerando WebP com alpha. A cor da amostra é inferida do recorte — isso é comportamento do sistema, não texto para a interface.
+- O modelo é **pré-carregado ao abrir qualquer página do admin** (`preloadCutout` na layout), para que o primeiro upload não espere o download dos ~40 MB. O cache fica no navegador; o preload é chamado uma vez por sessão.
 - Upload acontece ao salvar a cor ou ao criar uma peça; não existe botão de "enviar imagem" separado.
 
 ## Convenção de texto da interface

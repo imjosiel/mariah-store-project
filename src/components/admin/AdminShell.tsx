@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -12,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { signOutFromAdmin } from "@/auth-actions";
+import { preloadCutout } from "@/lib/cutout";
 
 /** Card com contraste maior: fundo quente do lado de fora, superfície branca por dentro. */
 export const PANEL =
@@ -32,6 +34,10 @@ const LINKS = [
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+
+  useEffect(() => {
+    void preloadCutout();
+  }, []);
 
   return (
     <div className="relative min-h-screen bg-[#F7EFE7] text-[#141210]">
