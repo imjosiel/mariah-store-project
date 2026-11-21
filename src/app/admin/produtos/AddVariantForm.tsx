@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import Image from "next/image";
 
 import { addVariantAction } from "@/admin-actions";
+import { makeCutout } from "@/lib/cutout";
 import { extractDominantColor } from "@/lib/dominantColor";
 import type { AdminProductRow } from "@/lib/productStore";
 
@@ -15,7 +16,10 @@ export function AddVariantForm({
 }: {
   product: AdminProductRow;
 }) {
-  const [state, action, pending] = useActionState(addVariantAction, { message: "" });
+  const [state, baseAction, pending] = useActionState(addVariantAction, { message: "" });
+  const [cutout, setCutout] = useState<File | null>(null);
+  const [cutStatus, setCutStatus] = useState("");
+  const [cutError, setCutError] = useState("");
   const [colorName, setColorName] = useState("");
   const [colorSlug, setColorSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
@@ -36,6 +40,11 @@ export function AddVariantForm({
       (item) => !item.sizeLabel || !Number.isInteger(item.stock) || item.stock < 0
     ) ||
     new Set(parsedStocks.map((item) => item.sizeLabel)).size !== parsedStocks.length;
+
+  const action = (formData: FormData) => {
+    if (cutout) formData.set("image", cutout, cutout.name);
+    return baseAction(formData);
+  };
 
   const suggestion = (value: string) =>
     value
@@ -84,12 +93,25 @@ export function AddVariantForm({
                     onChange={async (event) => {
                       const file = event.target.files?.[0];
                       if (!file) return;
+                      setCutout(null);
+                      setCutError("");
                       setImageName(file.name);
                       setPreview(URL.createObjectURL(file));
-                      const suggested = await extractDominantColor(file);
-                      if (suggested) {
-                        setSwatchHex(suggested);
-                        setColorSuggested(true);
+                      try {
+                        const result = await makeCutout(file, setCutStatus);
+                        setCutout(result);
+                        setPreview(URL.createObjectURL(result));
+                        const suggested = await extractDominantColor(result);
+                        if (suggested) {
+                          setSwatchHex(suggested);
+                          setColorSuggested(true);
+                        }
+                      } catch {
+                        setCutError(
+                          "Não foi possível remover o fundo. A imagem original será enviada."
+                        );
+                      } finally {
+                        setCutStatus("");
                       }
                     }}
                   />
@@ -97,8 +119,12 @@ export function AddVariantForm({
                 {imageName && <span className="text-[10px] text-muted">{imageName}</span>}
               </div>
               <p className="mt-1 text-[10px] text-muted">
-                A cor da amostra é sugerida pela imagem. O upload acontece ao Salvar.
+                {cutStatus ||
+                  "Fundo removido automaticamente. A cor da amostra é sugerida pelo recorte."}
               </p>
+              {cutError && (
+                <p className="mt-1 text-[10px] font-semibold text-copper">{cutError}</p>
+              )}
             </div>
 
             {preview && (

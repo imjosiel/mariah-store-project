@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 
 import { createProductAction } from "@/admin-actions";
+import { makeCutout } from "@/lib/cutout";
 
 const GLASS =
   "rounded-[20px] border border-[#E4DED8] bg-white/90 p-5 shadow-[0_10px_32px_-22px_rgba(59,35,22,0.28)] sm:p-6";
@@ -44,10 +45,18 @@ export function NewProductForm({
 }: {
   categories: readonly { slug: string; name: string }[];
 }) {
-  const [state, action, pending] = useActionState(createProductAction, { message: "" });
+  const [state, baseAction, pending] = useActionState(createProductAction, { message: "" });
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
+  const [cutout, setCutout] = useState<File | null>(null);
+  const [imageName, setImageName] = useState("");
+  const [cutStatus, setCutStatus] = useState("");
+
+  const action = (formData: FormData) => {
+    if (cutout) formData.set("image", cutout, cutout.name);
+    return baseAction(formData);
+  };
 
   const suggestSlug = (value: string) =>
     value
@@ -138,11 +147,43 @@ export function NewProductForm({
           <Field name="colorName" label="Nome da cor" placeholder="Vinho Rosé" />
           <Field name="colorSlug" label="Slug da cor" placeholder="vinho-rose" />
           <Field name="swatchHex" label="Hex da cor" placeholder="#6C2E3B" />
-          <Field
-            name="cutoutImageUrl"
-            label="Imagem (caminho em /public)"
-            placeholder="/products/nova-peca.webp"
-          />
+          <div className="sm:col-span-2">
+            <span className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
+              Imagem da peça (fundo removido automaticamente)
+            </span>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <label className="flex cursor-pointer items-center gap-1.5 rounded-full border border-[#E4DED8] bg-white px-3 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-rosegold hover:text-[#141210]">
+                Selecionar arquivo
+                <input
+                  type="file"
+                  name="image"
+                  accept="image/webp,image/png,image/jpeg"
+                  className="sr-only"
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    setCutout(null);
+                    setImageName(file.name);
+                    setCutStatus("Removendo fundo…");
+                    try {
+                      const result = await makeCutout(file, setCutStatus);
+                      setCutout(result);
+                      setImageName(result.name);
+                    } catch {
+                      setCutStatus("Não foi possível remover o fundo.");
+                    } finally {
+                      setCutStatus("");
+                    }
+                  }}
+                />
+              </label>
+              {imageName && <span className="text-[10px] text-[#6E6660]">{imageName}</span>}
+            </div>
+            {cutStatus && <p className="mt-1 text-[10px] text-[#6E6660]">{cutStatus}</p>}
+            <p className="mt-1 text-[10px] text-muted">
+              O upload para o R2 acontece ao criar a peça.
+            </p>
+          </div>
           <Field name="atmosphereBg" label="Fundo da atmosfera" defaultValue="#FAF3EB" />
           <Field name="atmosphereGlow" label="Brilho da atmosfera" defaultValue="#FFFDF9" />
           <Field name="atmosphereText" label="Texto da atmosfera" defaultValue="#3B2316" />

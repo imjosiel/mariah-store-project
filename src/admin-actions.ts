@@ -108,7 +108,6 @@ export async function createProductAction(
     "colorName",
     "colorSlug",
     "swatchHex",
-    "cutoutImageUrl",
   ];
   const values: Record<string, string> = {};
   for (const key of required) {
@@ -134,6 +133,22 @@ export async function createProductAction(
   }
   if (stocks.length === 0) return { message: "Informe ao menos um tamanho." };
 
+  let cutoutImageUrl = "";
+  const image = formData.get("image");
+  if (image instanceof File && image.size > 0) {
+    try {
+      cutoutImageUrl = await uploadImage(
+        image,
+        values.slug,
+        values.colorSlug
+      );
+    } catch (error) {
+      return {
+        message: error instanceof Error ? error.message : "Falha no upload da imagem.",
+      };
+    }
+  }
+
   try {
     await createProduct({
       slug: values.slug,
@@ -151,7 +166,7 @@ export async function createProductAction(
         colorName: values.colorName,
         colorSlug: values.colorSlug,
         swatchHex: values.swatchHex,
-        cutoutImageUrl: values.cutoutImageUrl,
+        cutoutImageUrl,
         atmosphereBg: String(formData.get("atmosphereBg") ?? "#FAF3EB"),
         atmosphereGlow: String(formData.get("atmosphereGlow") ?? "#FFFDF9"),
         atmosphereText: String(formData.get("atmosphereText") ?? "#3B2316"),

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { UploadCloud } from "lucide-react";
 
 import { saveVariantAction } from "@/admin-actions";
+import { makeCutout } from "@/lib/cutout";
 import type { AdminProductRow } from "@/lib/productStore";
 
 type Variant = AdminProductRow["variants"][number];
@@ -27,8 +28,11 @@ export function VariantEditor({
       removed: false,
     }))
   );
-  const [state, action] = useActionState(saveVariantAction, { message: "" });
+  const [state, baseAction] = useActionState(saveVariantAction, { message: "" });
   const [imageName, setImageName] = useState("");
+  const [cutout, setCutout] = useState<File | null>(null);
+  const [cutStatus, setCutStatus] = useState("");
+  const [cutError, setCutError] = useState("");
 
   const active = sizes.filter((size) => !size.removed);
   const labels = active.map((size) => size.label.trim());
@@ -41,6 +45,11 @@ export function VariantEditor({
 
   // Só os tamanhos ativos vão para o banco; os marcados são descartados no Salvar.
   const payload = active.map((size) => ({ label: size.label, stock: Number(size.stock) }));
+
+  const action = (formData: FormData) => {
+    if (cutout) formData.set("image", cutout, cutout.name);
+    return baseAction(formData);
+  };
 
   return (
     <div className="rounded-xl bg-[#FDFAF8] p-4">
@@ -176,17 +185,37 @@ export function VariantEditor({
                 name="image"
                 accept="image/webp,image/png,image/jpeg"
                 className="sr-only"
-                onChange={(event) => {
+                onChange={async (event) => {
                   const file = event.target.files?.[0];
-                  setImageName(file ? file.name : "");
+                  if (!file) return;
+                  setCutout(null);
+                  setCutError("");
+                  setImageName(file.name);
+                  try {
+                    const result = await makeCutout(file, setCutStatus);
+                    setCutout(result);
+                    setImageName(result.name);
+                  } catch {
+                    setCutError(
+                      "Não foi possível remover o fundo. A imagem original será enviada."
+                    );
+                  } finally {
+                    setCutStatus("");
+                  }
                 }}
               />
             </label>
+            {cutStatus && (
+              <p className="text-center text-[10px] text-[#6E6660]">{cutStatus}</p>
+            )}
           </div>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
           {imageName && <span className="text-[10px] text-[#6E6660]">{imageName}</span>}
+          {cutError && (
+            <span className="text-[10px] font-semibold text-[#A8432F]">{cutError}</span>
+          )}
           {hasDuplicate && (
             <span className="text-[10px] font-semibold text-[#A8432F]">Rótulos repetidos ou vazios.</span>
           )}
