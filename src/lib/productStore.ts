@@ -253,6 +253,65 @@ export async function setVariantImage(
   if (result.count === 0) throw new Error("Cor não encontrada nesta peça");
 }
 
+export type SizeSystem = "numbers" | "letters" | "unique";
+
+export const SIZE_LABELS: Record<SizeSystem, string[]> = {
+  numbers: ["36", "38", "40", "42"],
+  letters: ["PP", "P", "M", "G"],
+  unique: ["Único"],
+};
+
+export function detectSizeSystem(labels: readonly string[]): SizeSystem {
+  if (labels.includes("Único")) return "unique";
+  return labels.some((label) => /[A-Za-z]/.test(label)) ? "letters" : "numbers";
+}
+
+/**
+ * Troca o sistema de tamanho de uma peça.
+ * Preserva o estoque por posição (36→PP, 38→P, 40→M, 42→G) e
+ * remove/adiciona linhas conforme o novo conjunto de rótulos.
+ */
+export async function setProductSizeSystem(
+  productSlug: string,
+  system: SizeSystem
+): Promise<void> {
+  const product = await prisma.product.findUnique({
+    where: { slug: productSlug },
+    select: { id: true },
+  });
+  if (!product) throw new Error("Peça não encontrada");
+
+  const variants = await prisma.productVariant.findMany({
+    where: { productId: product.id },
+    select: { id: true },
+  });
+  const labels = SIZE_LABELS[system];
+
+  await prisma.$transaction(async (tx) => {
+    for (const variant of variants) {
+      const existing = await tx.variantStock.findMany({
+        where: { variantId: variant.id },
+      });
+      const source = detectSizeSystem(existing.map((stock) => stock.sizeLabel));
+      const sourceOrder = SIZE_LABELS[source];
+      const sorted = [...existing].sort(
+        (a, b) => sourceOrder.indexOf(a.sizeLabel) - sourceOrder.indexOf(b.sizeLabel)
+      );
+      const quantities = sorted.map((stock) => stock.stock);
+
+      await tx.variantStock.deleteMany({ where: { variantId: variant.id } });
+
+      await tx.variantStock.createMany({
+        data: labels.map((label, index) => ({
+          variantId: variant.id,
+          sizeLabel: label,
+          stock: quantities[index] ?? 0,
+        })),
+      });
+    }
+  });
+}
+
 export async function resetProducts(): Promise<void> {
   const updates: ProductUpdate[] = PRODUCTS.map((product) => ({
     slug: product.slug,

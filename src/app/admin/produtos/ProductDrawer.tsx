@@ -8,10 +8,11 @@ import { saveProductsAction } from "@/admin-actions";
 import { formatBRL } from "@/data/catalog";
 import { calculateCommission } from "@/domain/commission";
 import { reaisToCents } from "@/domain/money";
-import type { AdminProductRow, ProductUpdate } from "@/lib/productStore";
+import type { AdminProductRow, ProductUpdate, SizeSystem } from "@/lib/productStore";
 
 import { AddVariantForm } from "./AddVariantForm";
 import { ImageUpload } from "./ImageUpload";
+import { SizeSystemPicker } from "./SizeSystemPicker";
 
 const stockKey = (colorSlug: string, sizeLabel: string) => `${colorSlug}:${sizeLabel}`;
 const centsToInput = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
@@ -59,6 +60,13 @@ export function ProductDrawer({
       })
     ),
   };
+
+  const labels = product.variants[0]?.stocks.map((stock) => stock.sizeLabel) ?? [];
+  const currentSystem: SizeSystem = labels.includes("Único")
+    ? "unique"
+    : labels.some((label) => /[A-Za-z]/.test(label))
+      ? "letters"
+      : "numbers";
 
   const margin = invalid ? 0 : price - cost;
   const commission = calculateCommission({
@@ -183,6 +191,8 @@ export function ProductDrawer({
 
             <AddVariantForm productSlug={product.slug} />
           </section>
+
+          <SizeSystemPicker productSlug={product.slug} current={currentSystem} />
         </div>
 
         <footer className="flex items-center justify-between gap-3 border-t border-[#EDE3D8] bg-[#FDFAF8] px-6 py-4">

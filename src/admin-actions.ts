@@ -16,10 +16,12 @@ import {
   createProduct,
   resetProducts,
   saveProducts,
+  setProductSizeSystem,
   setVariantImage,
   type NewProductInput,
   type NewVariantInput,
   type ProductUpdate,
+  type SizeSystem,
 } from "@/lib/productStore";
 import { StorageError, setStorageLimitBytes, uploadImage } from "@/lib/r2Store";
 
@@ -277,6 +279,30 @@ export async function setStorageLimitAction(
   } catch (error) {
     return {
       message: error instanceof StorageError ? error.message : "Não foi possível salvar.",
+    };
+  }
+}
+
+export async function setSizeSystemAction(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  if (!(await isSuperAdmin())) return { message: "Acesso negado." };
+
+  const slug = String(formData.get("productSlug") ?? "");
+  const system = String(formData.get("sizeSystem") ?? "") as SizeSystem;
+  if (!slug || !["numbers", "letters", "unique"].includes(system)) {
+    return { message: "Dados inválidos." };
+  }
+
+  try {
+    await setProductSizeSystem(slug, system);
+    revalidatePath("/admin/produtos");
+    revalidatePath("/");
+    return { message: "Tamanhos atualizados." };
+  } catch (error) {
+    return {
+      message: error instanceof Error ? error.message : "Não foi possível alterar os tamanhos.",
     };
   }
 }
