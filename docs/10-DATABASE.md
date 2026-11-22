@@ -49,8 +49,9 @@ Detalhes de implementação **não aparecem na tela** — ficam apenas neste doc
 - Cota por loja em `StorageSetting` (padrão **1 GB**), ajustável pelo super admin em `/admin/armazenamento`. O upload soma os tamanhos dos objetos via `ListObjectsV2` e bloqueia se estourar o limite. As 11 imagens antigas em `public/products/` seguem como fallback.
 - **Arquivamento e exclusão de peças:** `Product.archivedAt` (migration `20261122003921_archive_products`). "Arquivar" tira a peça da vitrine (`getProductsFromDb` filtra `archivedAt: null`) e da lista padrão do ERP, preservando `Product`, variações, estoque, `OrderItem`, NF e comissão; a lista tem "Ver arquivadas" para reativar. "Excluir" é definitivo: apaga o produto (variações e estoques por cascade) e também os `OrderItem` da peça — obrigatório porque `OrderItem.productId` não tem `onDelete: Cascade`. Pedidos, totais, NF e comissão permanecem, mas o detalhe da peça vendida sai desses pedidos. As duas ações pedem confirmação na interface e funcionam mesmo para peças que já venderam.
 - `/admin/produtos` edita **preço, custo e estoque por cor/tamanho** no banco e `/admin/produtos/novo`
-  cadastra **novas peças** (produto + primeira cor + estoque) e permite **adicionar novas cores**
-  com estoque por tamanho a peças existentes — ERP mínimo completo.
+  cadastra **novas peças já com várias cores** (cada uma com imagem, tema e estoque próprios,
+  gravadas numa única transação em `createProductWithVariants`) e permite **adicionar novas cores**
+  a peças existentes — ERP mínimo completo.
 - **Fontes da verdade já migradas para o banco:** catálogo (`Product`/`Category`/`ProductVariant`),
   admins (`Admin`), custos (`Product.costInCents`), pedidos (`Order`/`OrderItem`) e estoque
   (`VariantStock`). A vitrine lê `getProductsFromDb()` e as categorias vêm do banco. Sem mocks:

@@ -185,8 +185,8 @@ export async function createProduct(input: NewProductInput): Promise<void> {
   });
 }
 
-export interface NewVariantInput {
-  productSlug: string;
+/** Dados de uma cor, sem depender de um produto já existente. */
+export interface VariantData {
   colorName: string;
   colorSlug: string;
   swatchHex: string;
@@ -196,6 +196,74 @@ export interface NewVariantInput {
   atmosphereText: string;
   isLightTheme: boolean;
   stocks: Array<{ sizeLabel: string; stock: number }>;
+}
+
+export interface NewVariantInput extends VariantData {
+  productSlug: string;
+}
+
+export interface CreateProductWithVariantsInput
+  extends Omit<NewProductInput, "variant"> {
+  variants: VariantData[];
+}
+
+/** Cria a peça com todas as cores de uma vez, numa única transação implícita do Prisma. */
+export async function createProductWithVariants(
+  input: CreateProductWithVariantsInput
+): Promise<void> {
+  if (input.variants.length === 0) throw new Error("Informe ao menos uma cor");
+
+  const slugs = input.variants.map((variant) => variant.colorSlug);
+  if (new Set(slugs).size !== slugs.length) {
+    throw new Error("Cada cor precisa de um slug diferente");
+  }
+
+  const category = await prisma.category.findUnique({
+    where: { slug: input.categorySlug },
+    select: { id: true },
+  });
+  if (!category) throw new Error("Categoria não encontrada");
+
+  const existing = await prisma.product.findUnique({
+    where: { slug: input.slug },
+    select: { id: true },
+  });
+  if (existing) throw new Error("Já existe uma peça com esse slug");
+
+  await prisma.product.create({
+    data: {
+      slug: input.slug,
+      name: input.name,
+      subtitle: input.subtitle,
+      heroWord: input.heroWord,
+      description: input.description,
+      fabricDetails: input.fabricDetails,
+      careInstructions: input.careInstructions,
+      priceInCents: input.priceInCents,
+      costInCents: input.costInCents,
+      categoryId: category.id,
+      featuredInHero: input.featuredInHero,
+      variants: {
+        create: input.variants.map((variant, index) => ({
+          colorName: variant.colorName,
+          colorSlug: variant.colorSlug,
+          swatchHex: variant.swatchHex,
+          cutoutImageUrl: variant.cutoutImageUrl,
+          atmosphereBg: variant.atmosphereBg,
+          atmosphereGlow: variant.atmosphereGlow,
+          atmosphereText: variant.atmosphereText,
+          isLightTheme: variant.isLightTheme,
+          sortOrder: index,
+          stocks: {
+            create: variant.stocks.map((stock) => ({
+              sizeLabel: stock.sizeLabel,
+              stock: stock.stock,
+            })),
+          },
+        })),
+      },
+    },
+  });
 }
 
 export async function addVariant(input: NewVariantInput): Promise<void> {

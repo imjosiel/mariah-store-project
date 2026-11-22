@@ -13,14 +13,13 @@ import {
 } from "@/lib/adminStore";
 import {
   addVariant,
-  createProduct,
+  createProductWithVariants,
   replaceVariantSizes,
   saveProducts,
   setProductSizes,
   setProductSizeSystem,
   setVariantImage,
-  type NewProductInput,
-  type NewVariantInput,
+  type VariantData,
   type ProductUpdate,
   type SizeSystem,
 } from "@/lib/productStore";
@@ -134,9 +133,6 @@ export async function createProductAction(
     "description",
     "fabricDetails",
     "categorySlug",
-    "colorName",
-    "colorSlug",
-    "swatchHex",
   ];
   const values: Record<string, string> = {};
   for (const key of required) {
@@ -151,35 +147,76 @@ export async function createProductAction(
     return { message: "Preço ou custo inválido." };
   }
 
-  const stocksRaw = String(formData.get("stocks") ?? "");
-  const stocks: NewProductInput["variant"]["stocks"] = [];
-  for (const part of stocksRaw.split(",")) {
-    const [sizeLabel, rawQty] = part.split(":").map((item) => item?.trim());
-    if (!sizeLabel || rawQty === undefined) continue;
-    const stock = Number(rawQty);
-    if (!Number.isInteger(stock) || stock < 0) return { message: "Estoque inválido." };
-    stocks.push({ sizeLabel, stock });
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(String(formData.get("variants") ?? ""));
+  } catch {
+    return { message: "Dados das cores inválidos." };
   }
-  if (stocks.length === 0) return { message: "Informe ao menos um tamanho." };
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    return { message: "Informe ao menos uma cor." };
+  }
 
-  let cutoutImageUrl = "";
-  const image = formData.get("image");
-  if (image instanceof File && image.size > 0) {
-    try {
-      cutoutImageUrl = await uploadImage(
-        image,
-        values.slug,
-        values.colorSlug
-      );
-    } catch (error) {
-      return {
-        message: error instanceof Error ? error.message : "Falha no upload da imagem.",
-      };
+  const images = formData
+    .getAll("image")
+    .filter((item): item is File => item instanceof File && item.size > 0);
+
+  const variants: VariantData[] = [];
+  for (const [index, raw] of parsed.entries()) {
+    if (!raw || typeof raw !== "object") return { message: "Dados das cores inválidos." };
+    const item = raw as Record<string, unknown>;
+    for (const key of ["colorName", "colorSlug", "swatchHex"]) {
+      if (typeof item[key] !== "string" || !String(item[key]).trim()) {
+        return { message: `Preencha ${key} da cor ${index + 1}.` };
+      }
     }
+    if (!Array.isArray(item.stocks) || item.stocks.length === 0) {
+      return { message: `Informe ao menos um tamanho na cor ${index + 1}.` };
+    }
+
+    const stocks: VariantData["stocks"] = [];
+    for (const rawStock of item.stocks) {
+      if (!rawStock || typeof rawStock !== "object") {
+        return { message: "Dados de estoque inválidos." };
+      }
+      const stock = rawStock as Record<string, unknown>;
+      if (
+        typeof stock.sizeLabel !== "string" ||
+        !stock.sizeLabel.trim() ||
+        typeof stock.stock !== "number" ||
+        !Number.isInteger(stock.stock) ||
+        stock.stock < 0
+      ) {
+        return { message: "Estoque inválido." };
+      }
+      stocks.push({ sizeLabel: stock.sizeLabel.trim(), stock: stock.stock });
+    }
+
+    let cutoutImageUrl = "";
+    if (typeof item.imageIndex === "number" && Number.isInteger(item.imageIndex)) {
+      const file = images[item.imageIndex];
+      if (!file) return { message: `Imagem da cor ${index + 1} não encontrada.` };
+      try {
+        cutoutImageUrl = await uploadImage(file, values.slug, String(item.colorSlug));
+      } catch (error) {
+        return {
+          message: error instanceof Error ? error.message : "Falha no upload da imagem.",
+        };
+      }
+    }
+
+    variants.push({
+      colorName: String(item.colorName).trim(),
+      colorSlug: String(item.colorSlug).trim(),
+      swatchHex: String(item.swatchHex).trim(),
+      cutoutImageUrl,
+      ...resolveAtmosphere(String(item.swatchHex), (key) => item[key]),
+      stocks,
+    });
   }
 
   try {
-    await createProduct({
+    await createProductWithVariants({
       slug: values.slug,
       name: values.name,
       subtitle: values.subtitle,
@@ -191,18 +228,7 @@ export async function createProductAction(
       costInCents,
       categorySlug: values.categorySlug,
       featuredInHero: formData.get("featuredInHero") === "on",
-      variant: {
-        colorName: values.colorName,
-        colorSlug: values.colorSlug,
-        swatchHex: values.swatchHex,
-        cutoutImageUrl,
-        ...resolveAtmosphere(values.swatchHex, (key) =>
-          key === "isLightTheme"
-            ? formData.has(key) ? "on" : "off"
-            : formData.get(key)
-        ),
-        stocks,
-      },
+      variants,
     });
   } catch (error) {
     return {
@@ -243,7 +269,7 @@ export async function addVariantAction(
       return { message: "Informe ao menos um tamanho." };
     }
 
-    const stocks: NewVariantInput["stocks"] = [];
+    const stocks: VariantData["stocks"] = [];
     for (const rawStock of item.stocks) {
       if (!rawStock || typeof rawStock !== "object") return { message: "Dados inválidos." };
       const stock = rawStock as Record<string, unknown>;
