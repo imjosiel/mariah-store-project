@@ -11,6 +11,7 @@ import {
   ShoppingBag,
   Store,
   UserPlus,
+  Wallet,
 } from "lucide-react";
 
 import { signOutFromAdmin } from "@/auth-actions";
@@ -28,6 +29,7 @@ export const INK_MUTED = "text-[#6E6660]";
 const LINKS = [
   { href: "/admin", label: "Visão geral", icon: LayoutDashboard },
   { href: "/admin/pedidos", label: "Pedidos", icon: ShoppingBag },
+  { href: "/admin/financeiro", label: "Financeiro", icon: Wallet },
   { href: "/admin/produtos", label: "Produtos", icon: Package },
   { href: "/admin/categorias", label: "Categorias", icon: ListFilter },
   { href: "/admin/usuarios", label: "Administradores", icon: UserPlus },

@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
-import { canAccessAdmin } from "@/domain/admin-access";
-import { getAdminEmails } from "@/lib/adminStore";
+import { canAccessAdmin, canManageAdmins } from "@/domain/admin-access";
+import { getAdminEmails, getSuperAdminEmail } from "@/lib/adminStore";
 import {
   cancelOrderInDb,
   confirmOrderInDb,
@@ -13,7 +13,9 @@ import {
   markOrderPaid,
   markOrderShippedInDb,
   refreshCommissionStatuses,
+  registerFinancialEvent,
   setNfNumberInDb,
+  setOrderSaleInfo,
   type OrderView,
 } from "@/lib/orderStore";
 import type { BagItem } from "@/types/store";
@@ -30,6 +32,14 @@ function revalidateAdmin(): void {
   revalidatePath("/admin");
   revalidatePath("/admin/produtos");
   revalidatePath("/admin/pedidos");
+  revalidatePath("/admin/financeiro");
+}
+
+async function requireSuperAdmin(): Promise<void> {
+  const session = await auth();
+  if (!canManageAdmins(session?.user?.email, await getSuperAdminEmail())) {
+    throw new Error("Acesso negado");
+  }
 }
 
 export async function createOrderAction(
@@ -80,5 +90,33 @@ export async function setNfNumberAction(code: string, nfNumber: string): Promise
 export async function refreshCommissionsAction(): Promise<void> {
   await requireAdmin();
   await refreshCommissionStatuses();
+  revalidateAdmin();
+}
+
+export async function setOrderSaleInfoAction(
+  code: string,
+  channel: "ONLINE" | "LOJA",
+  paymentMethod: "PIX" | "DINHEIRO" | "CARTAO" | "GATEWAY" | "OUTRO" | null
+): Promise<void> {
+  await requireAdmin();
+  await setOrderSaleInfo(code, channel, paymentMethod);
+  revalidateAdmin();
+}
+
+export async function registerFinancialEventAction(input: {
+  orderCode?: string | null;
+  type:
+    | "PAYMENT_RECEIVED"
+    | "COMMISSION_PAID"
+    | "COMMISSION_REFUNDED"
+    | "ORDER_REFUNDED";
+  amountInCents: number;
+  storeAmountInCents?: number | null;
+  feeInCents?: number;
+  note?: string | null;
+  receiptUrl?: string | null;
+}): Promise<void> {
+  await requireSuperAdmin();
+  await registerFinancialEvent(input);
   revalidateAdmin();
 }

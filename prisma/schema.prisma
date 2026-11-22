@@ -94,6 +94,26 @@ model Admin {
   createdAt DateTime @default(now())
 }
 
+enum SaleChannel {
+  ONLINE
+  LOJA
+}
+
+enum PaymentMethod {
+  PIX
+  DINHEIRO
+  CARTAO
+  GATEWAY
+  OUTRO
+}
+
+enum FinancialEventType {
+  PAYMENT_RECEIVED
+  COMMISSION_PAID
+  COMMISSION_REFUNDED
+  ORDER_REFUNDED
+}
+
 enum OrderStatus {
   DRAFT_BAG
   SENT_TO_WHATSAPP
@@ -118,6 +138,8 @@ model Order {
   notes                  String?
   totalInCents           Int
   status                 OrderStatus      @default(SENT_TO_WHATSAPP)
+  channel                SaleChannel      @default(ONLINE)
+  paymentMethod          PaymentMethod?
   whatsappPayload        String?          // Mensagem enviada / sincronizada
   confirmedAt            DateTime?
   shippedAt              DateTime?        // quando o admin marcou como enviado
@@ -133,8 +155,27 @@ model Order {
   commissionAvailableAt  DateTime?        // confirmedAt + 7 dias (CDC art. 49)
   stockShortfalls        String[]         @default([])
   items                  OrderItem[]
+  financialEvents        FinancialEvent[]
   createdAt              DateTime         @default(now())
   updatedAt              DateTime         @updatedAt
+}
+
+/** Repasses/estornos — hoje manuais, no futuro espelhados dos webhooks do gateway. */
+model FinancialEvent {
+  id                 String             @id @default(cuid())
+  orderId            String?
+  order              Order?             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  type               FinancialEventType
+  amountInCents      Int
+  storeAmountInCents Int?
+  feeInCents         Int                @default(0)
+  occurredAt         DateTime           @default(now())
+  externalId         String?            @unique
+  receiptUrl         String?
+  note               String?
+  createdAt          DateTime           @default(now())
+
+  @@index([occurredAt])
 }
 
 model OrderItem {

@@ -47,6 +47,13 @@ npm run verify
 
 Detalhes de implementação **não aparecem na tela** — ficam apenas neste documento e no `docs/07`. A interface fala de peça, cor, tamanho e preço; não menciona R2, upload, modelo de IA, "regra de ouro" nem prazos de comissão. Isso evita vazar arquitetura para quem usa o ERP e evita textos desatualizados quando a infra muda.
 - Cota por loja em `StorageSetting` (padrão **1 GB**), ajustável pelo super admin em `/admin/armazenamento`. O upload soma os tamanhos dos objetos via `ListObjectsV2` e bloqueia se estourar o limite. As 11 imagens antigas em `public/products/` seguem como fallback.
+- **Venda e dinheiro:** `Order.channel` (`ONLINE`/`LOJA`, default `ONLINE`) e `Order.paymentMethod`
+  discriminam a origem e a forma de pagamento. `FinancialEvent` guarda recebimentos, repasses e
+  estornos (com `externalId` único para idempotência, valor, taxa, parte da loja e comprovante).
+  O relatório do super admin fica em `/admin/financeiro` e usa `src/domain/financial.ts`.
+  A migração é `20261122183808_sale_channel_and_financial_events`. Eventos escritos por webhook
+  do gateway vão atualizar `Order.commissionStatus` (`COMMISSION_PAID` → `PAID`,
+  `COMMISSION_REFUNDED` → `REVERSED`); hoje são manuais.
 - **Arquivamento e exclusão de peças:** `Product.archivedAt` (migration `20261122003921_archive_products`). "Arquivar" tira a peça da vitrine (`getProductsFromDb` filtra `archivedAt: null`) e da lista padrão do ERP, preservando `Product`, variações, estoque, `OrderItem`, NF e comissão; a lista tem "Ver arquivadas" para reativar. "Excluir" é definitivo: apaga o produto (variações e estoques por cascade) e também os `OrderItem` da peça — obrigatório porque `OrderItem.productId` não tem `onDelete: Cascade`. Pedidos, totais, NF e comissão permanecem, mas o detalhe da peça vendida sai desses pedidos. As duas ações pedem confirmação na interface e funcionam mesmo para peças que já venderam.
 - `/admin/produtos` edita **preço, custo e estoque por cor/tamanho** no banco e `/admin/produtos/novo`
   cadastra **novas peças já com várias cores** (cada uma com imagem, tema e estoque próprios,

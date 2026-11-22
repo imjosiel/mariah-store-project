@@ -83,6 +83,30 @@ qualquer, exceto DELIVERED/CANCELLED --[admin: cancelar]--> CANCELLED
 
 **Cancelamento:** registra `cancelledAt` e `cancelReason` (motivo opcional digitado no admin). Se o pedido já havia sido confirmado, o estoque é devolvido na mesma transação e `stockRestoredAt` guarda a idempotência. A comissão vira `REVERSED`, **exceto se já estiver `PAID`** — não se reverte um repasse já feito (§4). Pedido entregue não pode ser cancelado. A tela também permite marcar **enviado** e **entregue**, com data registrada em cada transição.
 
+## 5.1 Origem da venda, pagamento e eventos financeiros
+
+Toda venda tem `SaleChannel` (`ONLINE` ou `LOJA`) e, opcionalmente, `PaymentMethod`
+(`PIX`, `DINHEIRO`, `CARTAO`, `GATEWAY`, `OUTRO`). Pedidos antigos ficaram `ONLINE`.
+A origem existe porque a regra de arrependimento de 7 dias é só para venda fora do
+estabelecimento — a loja física não tem esse prazo legal, embora possa aceitar troca
+por cortesia (decisão da dona, registrada caso a caso, sem regra automática de prazo).
+
+Repasses e estornos vivem em `FinancialEvent` (`PAYMENT_RECEIVED`, `COMMISSION_PAID`,
+`COMMISSION_REFUNDED`, `ORDER_REFUNDED`), com valor, taxa, parte da loja, data,
+comprovante e `externalId` único para idempotência de webhook. O super admin vê o
+relatório em `/admin/financeiro`; as regras de soma estão em `src/domain/financial.ts`.
+Hoje os eventos são registrados manualmente. Quando entrar um gateway com split
+(ex.: Asaas), os eventos passam a ser escritos por webhook e o botão "Marcar pago"
+fica só para venda em dinheiro/Pix direto.
+
+**Decisão de integração (pesquisada na doc do Asaas, 2026-11-22):** o split não pode
+ser agendado — liquida no recebimento. O estorno da cobrança estorna o split
+automaticamente, então devolução de venda online **deve** ser feita como estorno da
+cobrança. O split percentual incide sobre `netValue` (após taxas), o que mudaria a
+regra desta seção; por isso o repasse deve usar **`fixedValue`** com o valor em
+centavos calculado aqui (10% da margem), nunca percentual do total. Taxas continuam
+fora da base da comissão.
+
 ## 6. ERP/CRM mínimo (escopo)
 
 Como não há sistema anterior para integrar, construímos o mínimo. **Não é um ERP completo.**

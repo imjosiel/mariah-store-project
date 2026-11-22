@@ -22,6 +22,7 @@ import {
   markOrderPaidAction,
   markOrderShippedAction,
   setNfNumberAction,
+  setOrderSaleInfoAction,
 } from "@/order-actions";
 import type { OrderView } from "@/lib/orderStore";
 import { PANEL } from "@/components/admin/AdminShell";
@@ -44,6 +45,18 @@ const ORDER_STATUS_LABEL: Record<FulfillmentStatus, string> = {
 
 const PAGE_SIZE = 10;
 const DAY_MS = 86_400_000;
+
+const CHANNEL_LABEL = { ONLINE: "Online", LOJA: "Loja física" } as const;
+const PAYMENT_LABEL = {
+  PIX: "Pix",
+  DINHEIRO: "Dinheiro",
+  CARTAO: "Cartão",
+  GATEWAY: "Gateway",
+  OUTRO: "Outro",
+} as const;
+
+type Channel = keyof typeof CHANNEL_LABEL;
+type Payment = keyof typeof PAYMENT_LABEL;
 
 function OrderStatusPill({ status }: { status: FulfillmentStatus }) {
   const tone =
@@ -89,6 +102,9 @@ export function PedidosClient({ orders }: { orders: OrderView[] }) {
   const [page, setPage] = useState(0);
   const [cancelingCode, setCancelingCode] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
+  const [editingSaleCode, setEditingSaleCode] = useState<string | null>(null);
+  const [saleChannel, setSaleChannel] = useState<Channel>("ONLINE");
+  const [salePayment, setSalePayment] = useState<Payment | "">("");
 
   // Referência estável: o pedido mais recente da própria lista, em vez de Date.now().
   const newestOrderTime = useMemo(
@@ -242,6 +258,27 @@ export function PedidosClient({ orders }: { orders: OrderView[] }) {
                       {order.customerName ? ` · ${order.customerName}` : ""}
                     </span>
                   </div>
+                  <div className="flex w-full flex-wrap items-center gap-2 text-[10px] text-[#6E6660]">
+                    <span className="rounded-full bg-[#F1ECE7] px-2 py-0.5 font-semibold">
+                      {CHANNEL_LABEL[order.channel]}
+                    </span>
+                    {order.paymentMethod && (
+                      <span className="rounded-full bg-[#F1ECE7] px-2 py-0.5 font-semibold">
+                        {PAYMENT_LABEL[order.paymentMethod]}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingSaleCode(order.code);
+                        setSaleChannel(order.channel);
+                        setSalePayment(order.paymentMethod ?? "");
+                      }}
+                      className="cursor-pointer font-semibold text-copper underline"
+                    >
+                      classificar venda
+                    </button>
+                  </div>
                   <div className="text-right">
                     <p className="tabular-price font-serif text-xl font-semibold">
                       {formatBRL(order.totalInCents)}
@@ -379,6 +416,61 @@ export function PedidosClient({ orders }: { orders: OrderView[] }) {
                     )}
                   </div>
                 </div>
+
+                {editingSaleCode === order.code && (
+                  <div className="mt-3 flex flex-wrap items-end gap-2 rounded-xl border border-[#E4DED8] bg-white p-3">
+                    <label className="block">
+                      <span className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
+                        Canal
+                      </span>
+                      <select
+                        value={saleChannel}
+                        onChange={(event) => setSaleChannel(event.target.value as Channel)}
+                        className="mt-1 rounded-xl border border-[#E4DED8] bg-white px-3 py-2 text-xs text-[#141210]"
+                      >
+                        {(Object.keys(CHANNEL_LABEL) as Channel[]).map((channel) => (
+                          <option key={channel} value={channel}>
+                            {CHANNEL_LABEL[channel]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
+                        Pagamento
+                      </span>
+                      <select
+                        value={salePayment}
+                        onChange={(event) => setSalePayment(event.target.value as Payment | "")}
+                        className="mt-1 rounded-xl border border-[#E4DED8] bg-white px-3 py-2 text-xs text-[#141210]"
+                      >
+                        <option value="">Não informado</option>
+                        {(Object.keys(PAYMENT_LABEL) as Payment[]).map((payment) => (
+                          <option key={payment} value={payment}>
+                            {PAYMENT_LABEL[payment]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void setOrderSaleInfoAction(order.code, saleChannel, salePayment || null);
+                        setEditingSaleCode(null);
+                      }}
+                      className="cursor-pointer rounded-full bg-[#161311] px-4 py-2 text-[11px] font-semibold text-cream"
+                    >
+                      Salvar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingSaleCode(null)}
+                      className="cursor-pointer rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440]"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                )}
 
                 {cancelingCode === order.code && (
                   <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-[#E4DED8] bg-white p-3">

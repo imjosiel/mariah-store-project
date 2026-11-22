@@ -1,4 +1,12 @@
-import type { Order, OrderItem, Prisma } from "@prisma/client";
+import type {
+  FinancialEvent,
+  FinancialEventType,
+  Order,
+  OrderItem,
+  PaymentMethod,
+  Prisma,
+  SaleChannel,
+} from "@prisma/client";
 
 import {
   advanceCommission,
@@ -17,6 +25,19 @@ import {
 import type { BagItem } from "../types/store";
 import { prisma } from "./prisma";
 
+export interface FinancialEventView {
+  id: string;
+  orderCode: string | null;
+  type: FinancialEventType;
+  amountInCents: number;
+  storeAmountInCents: number | null;
+  feeInCents: number;
+  occurredAt: string;
+  externalId: string | null;
+  receiptUrl: string | null;
+  note: string | null;
+}
+
 /** Pedidos no Postgres (Fase 2). Datas serializadas para o Client Component. */
 export interface OrderView {
   code: string;
@@ -26,6 +47,9 @@ export interface OrderView {
   marginInCents: number;
   whatsappPayload: string;
   status: Order["status"];
+  channel: SaleChannel;
+  paymentMethod: PaymentMethod | null;
+  financialEvents: FinancialEventView[];
   createdAt: string;
   confirmedAt: string | null;
   shippedAt: string | null;
@@ -49,7 +73,7 @@ export interface OrderView {
 }
 
 function toView(
-  order: Order & { items: OrderItem[] }
+  order: Order & { items: OrderItem[]; financialEvents?: FinancialEvent[] }
 ): OrderView {
   return {
     code: order.code,
@@ -66,6 +90,20 @@ function toView(
     ),
     whatsappPayload: order.whatsappPayload ?? "",
     status: order.status,
+    channel: order.channel,
+    paymentMethod: order.paymentMethod,
+    financialEvents: (order.financialEvents ?? []).map((event) => ({
+      id: event.id,
+      orderCode: null,
+      type: event.type,
+      amountInCents: event.amountInCents,
+      storeAmountInCents: event.storeAmountInCents,
+      feeInCents: event.feeInCents,
+      occurredAt: event.occurredAt.toISOString(),
+      externalId: event.externalId,
+      receiptUrl: event.receiptUrl,
+      note: event.note,
+    })),
     createdAt: order.createdAt.toISOString(),
     confirmedAt: order.confirmedAt?.toISOString() ?? null,
     shippedAt: order.shippedAt?.toISOString() ?? null,
@@ -94,6 +132,8 @@ export interface CreateOrderInput {
   customerName: string;
   items: readonly BagItem[];
   whatsappPayload: string;
+  channel?: SaleChannel;
+  paymentMethod?: PaymentMethod | null;
 }
 
 /** Idempotente por código. O custo vem do banco, não do navegador. */
@@ -144,6 +184,8 @@ export async function createOrder(input: CreateOrderInput): Promise<OrderView> {
       customerName: input.customerName.trim() || null,
       totalInCents,
       status: "SENT_TO_WHATSAPP",
+      channel: input.channel ?? "ONLINE",
+      paymentMethod: input.paymentMethod ?? null,
       whatsappPayload: input.whatsappPayload,
       items: { createMany: { data: items } },
     },
@@ -155,10 +197,106 @@ export async function createOrder(input: CreateOrderInput): Promise<OrderView> {
 
 export async function listOrders(): Promise<OrderView[]> {
   const orders = await prisma.order.findMany({
-    include: { items: true },
+    include: { items: true, financialEvents: true },
     orderBy: { createdAt: "desc" },
   });
   return orders.map(toView);
+}
+
+export interface RegisterFinancialEventInput {
+  orderCode?: string | null;
+  type: FinancialEventType;
+  amountInCents: number;
+  storeAmountInCents?: number | null;
+  feeInCents?: number;
+  occurredAt?: Date;
+  externalId?: string | null;
+  receiptUrl?: string | null;
+  note?: string | null;
+}
+
+/** Idempotente por externalId — preparado para webhooks do gateway. */
+export async function registerFinancialEvent(
+  input: RegisterFinancialEventInput
+): Promise<void> {
+  if (!Number.isInteger(input.amountInCents) || input.amountInCents < 0) {
+    throw new Error("Valor inválido");
+  }
+
+  const externalId = input.externalId?.trim() || null;
+  if (externalId) {
+    const existing = await prisma.financialEvent.findUnique({ where: { externalId } });
+    if (existing) return;
+  }
+
+  let orderId: string | null = null;
+  if (input.orderCode) {
+    const order = await prisma.order.findUnique({
+      where: { code: input.orderCode },
+      select: { id: true },
+    });
+    if (!order) throw new Error("Pedido não encontrado");
+    orderId = order.id;
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.financialEvent.create({
+      data: {
+        orderId,
+        type: input.type,
+        amountInCents: input.amountInCents,
+        storeAmountInCents: input.storeAmountInCents ?? null,
+        feeInCents: input.feeInCents ?? 0,
+        occurredAt: input.occurredAt ?? new Date(),
+        externalId,
+        receiptUrl: input.receiptUrl?.trim() || null,
+        note: input.note?.trim() || null,
+      },
+    });
+
+    if (orderId && input.type === "COMMISSION_PAID") {
+      await tx.order.update({
+        where: { id: orderId },
+        data: { commissionStatus: "PAID" },
+      });
+    }
+    if (orderId && input.type === "COMMISSION_REFUNDED") {
+      await tx.order.update({
+        where: { id: orderId },
+        data: { commissionStatus: "REVERSED" },
+      });
+    }
+  });
+}
+
+export async function listFinancialEvents(): Promise<FinancialEventView[]> {
+  const events = await prisma.financialEvent.findMany({
+    include: { order: { select: { code: true } } },
+    orderBy: { occurredAt: "desc" },
+  });
+  return events.map((event) => ({
+    id: event.id,
+    orderCode: event.order?.code ?? null,
+    type: event.type,
+    amountInCents: event.amountInCents,
+    storeAmountInCents: event.storeAmountInCents,
+    feeInCents: event.feeInCents,
+    occurredAt: event.occurredAt.toISOString(),
+    externalId: event.externalId,
+    receiptUrl: event.receiptUrl,
+    note: event.note,
+  }));
+}
+
+export async function setOrderSaleInfo(
+  code: string,
+  channel: SaleChannel,
+  paymentMethod: PaymentMethod | null
+): Promise<void> {
+  await prisma.order.update({
+    where: { code },
+    data: { channel, paymentMethod },
+  });
 }
 
 export async function confirmOrderInDb(code: string, at = new Date()): Promise<void> {
