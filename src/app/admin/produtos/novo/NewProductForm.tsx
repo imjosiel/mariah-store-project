@@ -5,6 +5,8 @@ import { useActionState, useState } from "react";
 import { createProductAction } from "@/admin-actions";
 import { makeCutout } from "@/lib/cutout";
 import { extractDominantColor } from "@/lib/dominantColor";
+import { deriveAtmosphere, type Atmosphere } from "@/lib/atmosphere";
+import { AtmosphereFields } from "../AtmosphereFields";
 
 const GLASS =
   "rounded-[20px] border border-[#E4DED8] bg-white/90 p-5 shadow-[0_10px_32px_-22px_rgba(59,35,22,0.28)] sm:p-6";
@@ -54,6 +56,9 @@ export function NewProductForm({
   const [imageName, setImageName] = useState("");
   const [cutStatus, setCutStatus] = useState("");
   const [swatch, setSwatch] = useState("#6C2E3B");
+  const [atmosphere, setAtmosphere] = useState<Atmosphere>(() =>
+    deriveAtmosphere("#6C2E3B")
+  );
   const [sizeRows, setSizeRows] = useState<Array<{ sizeLabel: string; stock: string }>>([
     { sizeLabel: "", stock: "0" },
   ]);
@@ -164,14 +169,20 @@ export function NewProductForm({
                 type="color"
                 name="swatch-color"
                 value={swatch}
-                onChange={(event) => setSwatch(event.target.value)}
+                onChange={(event) => {
+                  setSwatch(event.target.value);
+                  setAtmosphere(deriveAtmosphere(event.target.value));
+                }}
                 className="h-9 w-12 cursor-pointer rounded-lg border border-[#E4DED8] bg-white"
                 aria-label="Cor da amostra da peça"
               />
               <input
                 name="swatchHex"
                 value={swatch}
-                onChange={(event) => setSwatch(event.target.value)}
+                onChange={(event) => {
+                  setSwatch(event.target.value);
+                  setAtmosphere(deriveAtmosphere(event.target.value));
+                }}
                 className={input}
                 placeholder="#6C2E3B"
               />
@@ -200,7 +211,10 @@ export function NewProductForm({
                       setCutout(result);
                       setImageName(result.name);
                       const suggested = await extractDominantColor(result);
-                      if (suggested) setSwatch(suggested);
+                      if (suggested) {
+                        setSwatch(suggested);
+                        setAtmosphere(deriveAtmosphere(suggested));
+                      }
                     } catch {
                       setCutStatus("Não foi possível remover o fundo.");
                     } finally {
@@ -212,6 +226,13 @@ export function NewProductForm({
               {imageName && <span className="text-[10px] text-[#6E6660]">{imageName}</span>}
             </div>
             {cutStatus && <p className="mt-1 text-[10px] text-[#6E6660]">{cutStatus}</p>}
+          </div>
+          <div className="sm:col-span-2 border-t border-[#E4DED8] pt-4">
+            <AtmosphereFields
+              swatchHex={swatch}
+              value={atmosphere}
+              onChange={setAtmosphere}
+            />
           </div>
         </div>
         <div className="mt-4 sm:col-span-2">

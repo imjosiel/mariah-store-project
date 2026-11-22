@@ -6,7 +6,9 @@ import Image from "next/image";
 import { addVariantAction } from "@/admin-actions";
 import { makeCutout } from "@/lib/cutout";
 import { extractDominantColor } from "@/lib/dominantColor";
+import { deriveAtmosphere, type Atmosphere } from "@/lib/atmosphere";
 import type { AdminProductRow } from "@/lib/productStore";
+import { AtmosphereFields } from "./AtmosphereFields";
 
 const input =
   "mt-1 w-full rounded-xl border border-latte bg-white/80 px-3 py-2.5 text-sm text-espresso placeholder:text-muted/70 focus:border-rosegold";
@@ -24,6 +26,9 @@ export function AddVariantForm({
   const [colorSlug, setColorSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
   const [swatchHex, setSwatchHex] = useState("#C58F70");
+  const [atmosphere, setAtmosphere] = useState<Atmosphere>(() =>
+    deriveAtmosphere("#C58F70")
+  );
   const [imageName, setImageName] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [colorSuggested, setColorSuggested] = useState(false);
@@ -65,10 +70,7 @@ export function AddVariantForm({
           colorSlug,
           swatchHex,
           cutoutImageUrl: "",
-          atmosphereBg: "#FAF3EB",
-          atmosphereGlow: "#FFFDF9",
-          atmosphereText: "#3B2316",
-          isLightTheme: true,
+          ...atmosphere,
           stocks: parsedStocks,
         })}
       />
@@ -104,6 +106,7 @@ export function AddVariantForm({
                         const suggested = await extractDominantColor(result);
                         if (suggested) {
                           setSwatchHex(suggested);
+                          setAtmosphere(deriveAtmosphere(suggested));
                           setColorSuggested(true);
                         }
                       } catch {
@@ -172,6 +175,7 @@ export function AddVariantForm({
               value={swatchHex}
               onChange={(event) => {
                 setSwatchHex(event.target.value);
+                setAtmosphere(deriveAtmosphere(event.target.value));
                 setColorSuggested(false);
               }}
               className="h-9 w-12 cursor-pointer rounded-lg border border-latte bg-white"
@@ -181,6 +185,7 @@ export function AddVariantForm({
               value={swatchHex}
               onChange={(event) => {
                 setSwatchHex(event.target.value);
+                setAtmosphere(deriveAtmosphere(event.target.value));
                 setColorSuggested(false);
               }}
               className={input}
@@ -193,6 +198,14 @@ export function AddVariantForm({
             </span>
           )}
         </label>
+
+        <div className="sm:col-span-2 border-t border-latte pt-4">
+          <AtmosphereFields
+            swatchHex={swatchHex}
+            value={atmosphere}
+            onChange={setAtmosphere}
+          />
+        </div>
 
         <div className="sm:col-span-2">
           <div className="flex items-baseline justify-between gap-3">

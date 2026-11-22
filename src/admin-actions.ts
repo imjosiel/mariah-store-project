@@ -26,6 +26,35 @@ import {
 } from "@/lib/productStore";
 import { StorageError, setStorageLimitBytes, uploadImage } from "@/lib/r2Store";
 import { prisma } from "@/lib/prisma";
+import { deriveAtmosphere, type Atmosphere } from "@/lib/atmosphere";
+
+/** Respeita o que foi ajustado nos pickers; o que não veio usa a cor da peça. */
+function resolveAtmosphere(
+  swatchHex: string,
+  get: (key: string) => unknown
+): Atmosphere {
+  const derived = deriveAtmosphere(swatchHex);
+  const color = (key: "atmosphereBg" | "atmosphereGlow" | "atmosphereText") => {
+    const value = get(key);
+    return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value.trim())
+      ? value.trim()
+      : derived[key];
+  };
+  const light = get("isLightTheme");
+  const isLightTheme =
+    typeof light === "boolean"
+      ? light
+      : typeof light === "string"
+        ? light === "on" || light === "true"
+        : derived.isLightTheme;
+
+  return {
+    atmosphereBg: color("atmosphereBg"),
+    atmosphereGlow: color("atmosphereGlow"),
+    atmosphereText: color("atmosphereText"),
+    isLightTheme,
+  };
+}
 
 export type AdminActionState = { message: string };
 
@@ -167,10 +196,11 @@ export async function createProductAction(
         colorSlug: values.colorSlug,
         swatchHex: values.swatchHex,
         cutoutImageUrl,
-        atmosphereBg: String(formData.get("atmosphereBg") ?? "#FAF3EB"),
-        atmosphereGlow: String(formData.get("atmosphereGlow") ?? "#FFFDF9"),
-        atmosphereText: String(formData.get("atmosphereText") ?? "#3B2316"),
-        isLightTheme: formData.get("isLightTheme") === "on",
+        ...resolveAtmosphere(values.swatchHex, (key) =>
+          key === "isLightTheme"
+            ? formData.has(key) ? "on" : "off"
+            : formData.get(key)
+        ),
         stocks,
       },
     });
@@ -203,9 +233,6 @@ export async function addVariantAction(
       "colorSlug",
       "swatchHex",
       "cutoutImageUrl",
-      "atmosphereBg",
-      "atmosphereGlow",
-      "atmosphereText",
     ];
     for (const key of textFields) {
       if (typeof item[key] !== "string" || !String(item[key]).trim()) {
@@ -237,10 +264,7 @@ export async function addVariantAction(
       colorSlug: String(item.colorSlug),
       swatchHex: String(item.swatchHex),
       cutoutImageUrl: String(item.cutoutImageUrl),
-      atmosphereBg: String(item.atmosphereBg),
-      atmosphereGlow: String(item.atmosphereGlow),
-      atmosphereText: String(item.atmosphereText),
-      isLightTheme: item.isLightTheme === true,
+      ...resolveAtmosphere(String(item.swatchHex), (key) => item[key]),
       stocks,
     });
     revalidatePath("/admin/produtos");
