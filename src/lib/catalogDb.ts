@@ -22,6 +22,7 @@ export async function getCategoriesFromDb(): Promise<Category[]> {
 
 export async function getProductsFromDb(): Promise<Product[]> {
   const rows = await prisma.product.findMany({
+    where: { archivedAt: null },
     include: {
       category: true,
       variants: { include: { stocks: true }, orderBy: { sortOrder: "asc" } },

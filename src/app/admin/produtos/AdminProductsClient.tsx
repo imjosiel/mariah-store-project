@@ -8,6 +8,7 @@ import { ArrowLeft, Search, Sparkles } from "lucide-react";
 import { formatBRL } from "@/lib/money";
 import type { AdminProductRow } from "@/lib/productStore";
 
+import { ArchiveProductButton } from "./ArchiveProductButton";
 import { ProductDrawer } from "./ProductDrawer";
 
 const PANEL =
@@ -18,17 +19,23 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<AdminProductRow | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+
+  const listed = useMemo(
+    () => (showArchived ? products : products.filter((product) => !product.archived)),
+    [products, showArchived]
+  );
 
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
-    if (!term) return products;
-    return products.filter(
+    if (!term) return listed;
+    return listed.filter(
       (product) =>
         product.name.toLowerCase().includes(term) ||
         product.categoryName.toLowerCase().includes(term) ||
         product.variants.some((variant) => variant.colorName.toLowerCase().includes(term))
     );
-  }, [products, query]);
+  }, [listed, query]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pages - 1);
@@ -43,7 +50,9 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
           </p>
           <h1 className="mt-1 font-serif text-2xl font-semibold text-[#141210]">Produtos</h1>
           <p className="mt-0.5 text-[11px] text-[#6E6660]">
-            {products.length} peças · clique numa linha para editar preço, estoque e fotos.
+            {products.filter((product) => !product.archived).length} ativas ·{" "}
+            {products.filter((product) => product.archived).length} arquivadas · clique numa linha
+            para editar preço, estoque e fotos.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -78,6 +87,18 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
               className="w-full bg-transparent text-sm text-[#141210] outline-none placeholder:text-[#9A918B]"
             />
           </label>
+          <label className="flex shrink-0 cursor-pointer items-center gap-2 text-[11px] font-semibold text-[#4A4440]">
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(event) => {
+                setShowArchived(event.target.checked);
+                setPage(0);
+              }}
+              className="h-4 w-4 accent-copper"
+            />
+            Ver arquivadas
+          </label>
           <span className="tabular-price text-[11px] text-[#6E6660]">
             {filtered.length === 0
               ? "Nenhuma peça"
@@ -97,6 +118,7 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
                 <th className="px-4 py-3 text-right">Custo</th>
                 <th className="px-4 py-3 text-right">Estoque</th>
                 <th className="px-4 py-3 text-right">Comissão</th>
+                <th className="px-4 py-3">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F1ECE7]">
@@ -129,7 +151,14 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
                             unoptimized
                           />
                         </div>
-                        <span className="font-medium text-[#141210]">{product.name}</span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-medium text-[#141210]">{product.name}</span>
+                          {product.archived && (
+                            <span className="rounded-full bg-[#F1ECE7] px-2 py-0.5 text-[9px] font-semibold text-[#6E6660]">
+                              Arquivada
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-[#4A4440]">{product.categoryName}</td>
@@ -146,6 +175,16 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
                     </td>
                     <td className="tabular-price px-4 py-2.5 text-right font-semibold text-[#C0563E]">
                       {formatBRL(commission)}
+                    </td>
+                    <td
+                      className="px-4 py-2.5 text-right"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      {product.archived ? (
+                        <ArchiveProductButton slug={product.slug} mode="restore" />
+                      ) : (
+                        <span className="text-[10px] text-[#9A918B]">—</span>
+                      )}
                     </td>
                   </tr>
                 );

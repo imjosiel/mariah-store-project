@@ -11,6 +11,7 @@ import { prisma } from "./prisma";
 export interface AdminProductRow {
   slug: string;
   name: string;
+  archived: boolean;
   categoryName: string;
   imageUrl: string;
   priceInCents: number;
@@ -32,8 +33,11 @@ export interface ProductUpdate {
   stocks: Array<{ colorSlug: string; sizeLabel: string; stock: number }>;
 }
 
-export async function getAdminProducts(): Promise<AdminProductRow[]> {
+export async function getAdminProducts(options?: {
+  includeArchived?: boolean;
+}): Promise<AdminProductRow[]> {
   const rows = await prisma.product.findMany({
+    where: options?.includeArchived ? undefined : { archivedAt: null },
     include: {
       category: { select: { name: true } },
       variants: {
@@ -47,6 +51,7 @@ export async function getAdminProducts(): Promise<AdminProductRow[]> {
   return rows.map((row) => ({
     slug: row.slug,
     name: row.name,
+    archived: row.archivedAt !== null,
     categoryName: row.category.name,
     imageUrl: row.variants[0]?.cutoutImageUrl ?? "",
     priceInCents: row.priceInCents,

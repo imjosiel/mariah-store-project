@@ -10,6 +10,7 @@ import { reaisToCents } from "@/domain/money";
 import type { AdminProductRow } from "@/lib/productStore";
 
 import { AddVariantForm } from "./AddVariantForm";
+import { ArchiveProductButton } from "./ArchiveProductButton";
 import { VariantEditor } from "./VariantEditor";
 
 const centsToInput = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
@@ -174,7 +175,12 @@ export function ProductDrawer({
           <p className="text-[10px] text-[#6E6660]">
             {invalid ? "Confira os valores." : ""}
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <ArchiveProductButton
+              slug={product.slug}
+              mode={product.archived ? "restore" : "archive"}
+              onDone={onClose}
+            />
             <button
               type="button"
               onClick={onClose}

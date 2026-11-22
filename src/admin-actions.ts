@@ -56,7 +56,7 @@ function resolveAtmosphere(
   };
 }
 
-export type AdminActionState = { message: string };
+export type AdminActionState = { message: string; ok?: boolean };
 
 function validMoney(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
@@ -510,6 +510,60 @@ export async function removeCategoryAction(
   } catch (error) {
     return {
       message: error instanceof Error ? error.message : "Não foi possível remover.",
+    };
+  }
+}
+
+export async function archiveProductAction(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  if (!(await isSuperAdmin())) return { message: "Acesso negado." };
+
+  const slug = String(formData.get("slug") ?? "").trim();
+  if (!slug) return { message: "Peça não informada." };
+
+  try {
+    const result = await prisma.product.updateMany({
+      where: { slug, archivedAt: null },
+      data: { archivedAt: new Date() },
+    });
+    if (result.count === 0) return { message: "Peça não encontrada ou já arquivada." };
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    revalidatePath("/admin/produtos");
+    return { message: "Peça arquivada.", ok: true };
+  } catch (error) {
+    return {
+      message: error instanceof Error ? error.message : "Não foi possível arquivar.",
+    };
+  }
+}
+
+export async function restoreProductAction(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  if (!(await isSuperAdmin())) return { message: "Acesso negado." };
+
+  const slug = String(formData.get("slug") ?? "").trim();
+  if (!slug) return { message: "Peça não informada." };
+
+  try {
+    const result = await prisma.product.updateMany({
+      where: { slug, archivedAt: { not: null } },
+      data: { archivedAt: null },
+    });
+    if (result.count === 0) return { message: "Peça não estava arquivada." };
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    revalidatePath("/admin/produtos");
+    return { message: "Peça reativada.", ok: true };
+  } catch (error) {
+    return {
+      message: error instanceof Error ? error.message : "Não foi possível reativar.",
     };
   }
 }
