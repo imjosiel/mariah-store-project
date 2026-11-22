@@ -41,7 +41,7 @@ export default function LoginPage() {
         </Link>
 
         <p className="mt-6 border-t border-latte pt-4 text-[10px] leading-relaxed text-muted">
-          O acesso é restrito aos e-mails listados em ADMIN_EMAILS. Configuração em .env.local.
+          Acesso restrito à equipe da loja.
         </p>
       </div>
     </main>

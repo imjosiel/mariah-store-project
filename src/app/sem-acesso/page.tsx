@@ -20,8 +20,8 @@ export default function NoAccessPage() {
         </p>
         <h1 className="mt-3 font-serif text-3xl font-semibold">Sem acesso</h1>
         <p className="mt-2 text-xs leading-relaxed text-mocha">
-          Esta conta Google autenticou, mas não está na lista de administradores.
-          Peça ao responsável para adicionar seu e-mail em <code>ADMIN_EMAILS</code>.
+          Esta conta entrou, mas ainda não tem permissão para acessar esta área.
+          Peça ao responsável pela loja para liberar seu acesso.
         </p>
 
         <div className="mt-7 flex flex-col gap-2">
