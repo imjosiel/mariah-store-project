@@ -34,8 +34,11 @@ export function ArchiveProductButton({
   return (
     <div className="flex flex-wrap items-center gap-2">
       {confirming ? (
-        <form action={formAction} className="flex items-center gap-2">
+        <form action={formAction} className="flex flex-wrap items-center gap-2">
           <input type="hidden" name="slug" value={slug} />
+          <span className="text-[10px] font-semibold text-[#141210]">
+            {isArchive ? "Arquivar esta peça?" : "Reativar esta peça?"}
+          </span>
           <button
             type="submit"
             disabled={pending}

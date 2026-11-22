@@ -568,6 +568,41 @@ export async function restoreProductAction(
   }
 }
 
+export async function deleteProductAction(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  if (!(await isSuperAdmin())) return { message: "Acesso negado." };
+
+  const slug = String(formData.get("slug") ?? "").trim();
+  if (!slug) return { message: "Peça não informada." };
+
+  try {
+    const product = await prisma.product.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!product) return { message: "Peça não encontrada." };
+
+    // As variações e estoques saem por cascade. Os itens de pedido precisam
+    // ser removidos antes por causa da chave estrangeira — pedidos e valores
+    // permanecem, só o detalhe da peça vendida deixa de existir.
+    await prisma.$transaction([
+      prisma.orderItem.deleteMany({ where: { productId: product.id } }),
+      prisma.product.delete({ where: { id: product.id } }),
+    ]);
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    revalidatePath("/admin/produtos");
+    return { message: "Peça excluída.", ok: true };
+  } catch (error) {
+    return {
+      message: error instanceof Error ? error.message : "Não foi possível excluir.",
+    };
+  }
+}
+
 async function isSuperAdmin(): Promise<boolean> {
   const session = await auth();
   return canManageAdmins(session?.user?.email, await getSuperAdminEmail());

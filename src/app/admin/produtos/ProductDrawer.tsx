@@ -11,6 +11,7 @@ import type { AdminProductRow } from "@/lib/productStore";
 
 import { AddVariantForm } from "./AddVariantForm";
 import { ArchiveProductButton } from "./ArchiveProductButton";
+import { DeleteProductButton } from "./DeleteProductButton";
 import { VariantEditor } from "./VariantEditor";
 
 const centsToInput = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
@@ -176,11 +177,14 @@ export function ProductDrawer({
             {invalid ? "Confira os valores." : ""}
           </p>
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <ArchiveProductButton
-              slug={product.slug}
-              mode={product.archived ? "restore" : "archive"}
-              onDone={onClose}
-            />
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
+              <ArchiveProductButton
+                slug={product.slug}
+                mode={product.archived ? "restore" : "archive"}
+                onDone={onClose}
+              />
+              <DeleteProductButton slug={product.slug} onDone={onClose} />
+            </div>
             <button
               type="button"
               onClick={onClose}

@@ -9,6 +9,7 @@ import { formatBRL } from "@/lib/money";
 import type { AdminProductRow } from "@/lib/productStore";
 
 import { ArchiveProductButton } from "./ArchiveProductButton";
+import { DeleteProductButton } from "./DeleteProductButton";
 import { ProductDrawer } from "./ProductDrawer";
 
 const PANEL =
@@ -180,11 +181,13 @@ export function AdminProductsClient({ products }: { products: AdminProductRow[] 
                       className="px-4 py-2.5 text-right"
                       onClick={(event) => event.stopPropagation()}
                     >
-                      {product.archived ? (
-                        <ArchiveProductButton slug={product.slug} mode="restore" />
-                      ) : (
-                        <span className="text-[10px] text-[#9A918B]">—</span>
-                      )}
+                      <div className="flex flex-wrap items-center justify-end gap-1.5">
+                        <ArchiveProductButton
+                          slug={product.slug}
+                          mode={product.archived ? "restore" : "archive"}
+                        />
+                        <DeleteProductButton slug={product.slug} />
+                      </div>
                     </td>
                   </tr>
                 );
