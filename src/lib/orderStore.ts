@@ -7,6 +7,13 @@ import {
   markCommissionPaid,
   type CommissionStatus,
 } from "../domain/commission";
+import {
+  canCancelOrder,
+  canConfirmOrder,
+  canDeliverOrder,
+  canShipOrder,
+  shouldRestoreStock,
+} from "../domain/order-status";
 import type { BagItem } from "../types/store";
 import { prisma } from "./prisma";
 
@@ -21,6 +28,11 @@ export interface OrderView {
   status: Order["status"];
   createdAt: string;
   confirmedAt: string | null;
+  shippedAt: string | null;
+  deliveredAt: string | null;
+  cancelledAt: string | null;
+  cancelReason: string;
+  stockRestored: boolean;
   nfNumber: string;
   commissionInCents: number;
   commissionStatus: CommissionStatus;
@@ -56,6 +68,11 @@ function toView(
     status: order.status,
     createdAt: order.createdAt.toISOString(),
     confirmedAt: order.confirmedAt?.toISOString() ?? null,
+    shippedAt: order.shippedAt?.toISOString() ?? null,
+    deliveredAt: order.deliveredAt?.toISOString() ?? null,
+    cancelledAt: order.cancelledAt?.toISOString() ?? null,
+    cancelReason: order.cancelReason ?? "",
+    stockRestored: order.stockRestoredAt !== null,
     nfNumber: order.nfNumber ?? "",
     commissionInCents: order.commissionInCents,
     commissionStatus: order.commissionStatus as CommissionStatus,
@@ -150,7 +167,7 @@ export async function confirmOrderInDb(code: string, at = new Date()): Promise<v
       where: { code },
       include: { items: true },
     });
-    if (!order || order.confirmedAt) return;
+    if (!order || !canConfirmOrder(order)) return;
 
     const margin = order.items.reduce(
       (sum, item) => sum + (item.unitPriceInCents - item.unitCostInCents) * item.quantity,
@@ -196,22 +213,67 @@ export async function confirmOrderInDb(code: string, at = new Date()): Promise<v
   });
 }
 
-export async function cancelOrderInDb(code: string, now = new Date()): Promise<void> {
+export async function cancelOrderInDb(
+  code: string,
+  reason = "",
+  now = new Date()
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({
+      where: { code },
+      include: { items: true },
+    });
+    if (!order || !canCancelOrder(order)) return;
+
+    const restore = shouldRestoreStock(order);
+    if (restore) {
+      for (const item of order.items) {
+        await tx.variantStock.updateMany({
+          where: { variantId: item.variantId, sizeLabel: item.sizeLabel },
+          data: { stock: { increment: item.quantity } },
+        });
+      }
+    }
+
+    const updated = advanceCommission(
+      {
+        confirmedAt: order.confirmedAt,
+        commissionInCents: order.commissionInCents,
+        commissionStatus: order.commissionStatus as CommissionStatus,
+        commissionAvailableAt: order.commissionAvailableAt,
+        totalInCents: order.totalInCents,
+      },
+      { now, cancelled: true }
+    );
+
+    await tx.order.update({
+      where: { code },
+      data: {
+        status: "CANCELLED",
+        cancelledAt: now,
+        cancelReason: reason.trim() || null,
+        stockRestoredAt: restore ? now : order.stockRestoredAt,
+        commissionStatus: updated.commissionStatus,
+      },
+    });
+  });
+}
+
+export async function markOrderShippedInDb(code: string, at = new Date()): Promise<void> {
   const order = await prisma.order.findUnique({ where: { code } });
-  if (!order) return;
-  const updated = advanceCommission(
-    {
-      confirmedAt: order.confirmedAt,
-      commissionInCents: order.commissionInCents,
-      commissionStatus: order.commissionStatus as CommissionStatus,
-      commissionAvailableAt: order.commissionAvailableAt,
-      totalInCents: order.totalInCents,
-    },
-    { now, cancelled: true }
-  );
+  if (!order || !canShipOrder(order)) return;
   await prisma.order.update({
     where: { code },
-    data: { status: "CANCELLED", commissionStatus: updated.commissionStatus },
+    data: { status: "SHIPPED", shippedAt: at },
+  });
+}
+
+export async function markOrderDeliveredInDb(code: string, at = new Date()): Promise<void> {
+  const order = await prisma.order.findUnique({ where: { code } });
+  if (!order || !canDeliverOrder(order)) return;
+  await prisma.order.update({
+    where: { code },
+    data: { status: "DELIVERED", deliveredAt: at },
   });
 }
 

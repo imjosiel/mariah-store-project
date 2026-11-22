@@ -99,6 +99,7 @@ enum OrderStatus {
   SENT_TO_WHATSAPP
   CONFIRMED
   SHIPPED
+  DELIVERED
   CANCELLED
 }
 
@@ -119,6 +120,11 @@ model Order {
   status                 OrderStatus      @default(SENT_TO_WHATSAPP)
   whatsappPayload        String?          // Mensagem enviada / sincronizada
   confirmedAt            DateTime?
+  shippedAt              DateTime?        // quando o admin marcou como enviado
+  deliveredAt            DateTime?        // quando o admin marcou como entregue
+  cancelledAt            DateTime?
+  cancelReason           String?
+  stockRestoredAt        DateTime?        // idempotência do estorno no cancelamento
   nfNumber               String?          // preenchido manualmente após emissão na NFF
   cfop                   String           @default("5.102") // 5.101 produção própria | 5.102 revenda
   commissionBps          Int              @default(1000)    // 10%

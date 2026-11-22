@@ -89,7 +89,7 @@ export function confirmOrder<T extends CommissionableOrder>(
 
 /**
  * Avança o status conforme o tempo e o cancelamento.
- * - cancelado → REVERSED (a qualquer momento)
+ * - cancelado → REVERSED (exceto se já PAID, conforme docs/07 §4)
  * - PENDING + 7 dias → PAYABLE
  * - demais estados → inalterado
  */
@@ -98,6 +98,7 @@ export function advanceCommission<T extends CommissionableOrder>(
   { now, cancelled = false }: { now: Date; cancelled?: boolean }
 ): T {
   if (cancelled) {
+    if (order.commissionStatus === "PAID") return order;
     return { ...order, commissionStatus: "REVERSED" };
   }
 

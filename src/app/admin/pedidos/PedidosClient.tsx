@@ -1,48 +1,71 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import {
   Check,
+  CheckCheck,
   CircleDollarSign,
   FileDown,
   RotateCcw,
+  Search,
+  Truck,
   X,
 } from "lucide-react";
 
 import { formatBRL } from "@/lib/money";
 import { ordersToCsv } from "@/domain/report";
+import type { FulfillmentStatus } from "@/domain/order-status";
 import {
   cancelOrderAction,
   confirmOrderAction,
+  markOrderDeliveredAction,
   markOrderPaidAction,
+  markOrderShippedAction,
   setNfNumberAction,
 } from "@/order-actions";
 import type { OrderView } from "@/lib/orderStore";
 import { PANEL } from "@/components/admin/AdminShell";
 
-const STATUS_LABEL = {
+const COMMISSION_LABEL = {
   PENDING: "Aguardando prazo",
   PAYABLE: "A receber",
   PAID: "Pago",
   REVERSED: "Revertido",
 };
 
-const ORDER_STATUS_LABEL = {
+const ORDER_STATUS_LABEL: Record<FulfillmentStatus, string> = {
   DRAFT_BAG: "Rascunho",
-  SENT_TO_WHATSAPP: "Enviado no WhatsApp",
+  SENT_TO_WHATSAPP: "Aguardando confirmação",
   CONFIRMED: "Confirmado",
   SHIPPED: "Enviado",
+  DELIVERED: "Entregue",
   CANCELLED: "Cancelado",
 };
 
-function StatusPill({ order }: { order: OrderView }) {
-  if (!order.confirmedAt) {
-    return (
-      <span className="rounded-full border border-[#D9923F]/50 bg-[#D9923F]/10 px-3 py-1 text-[11px] font-semibold text-[#A66B23]">
-        Aguardando confirmação
-      </span>
-    );
-  }
+const PAGE_SIZE = 10;
+const DAY_MS = 86_400_000;
 
+function OrderStatusPill({ status }: { status: FulfillmentStatus }) {
+  const tone =
+    status === "DELIVERED"
+      ? "border-[#3F8A64]/50 bg-[#3F8A64]/10 text-[#2E6B4C]"
+      : status === "SHIPPED"
+        ? "border-[#3D6E9E]/50 bg-[#3D6E9E]/10 text-[#31577E]"
+        : status === "CONFIRMED"
+          ? "border-[#C0563E]/40 bg-[#C0563E]/10 text-[#A8432F]"
+          : status === "CANCELLED"
+            ? "border-[#8E7FA8]/50 bg-[#8E7FA8]/10 text-[#6E5F88]"
+            : "border-[#D9923F]/50 bg-[#D9923F]/10 text-[#A66B23]";
+
+  return (
+    <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${tone}`}>
+      {ORDER_STATUS_LABEL[status]}
+    </span>
+  );
+}
+
+function CommissionPill({ order }: { order: OrderView }) {
+  if (!order.confirmedAt) return null;
   const tone =
     order.commissionStatus === "PAYABLE"
       ? "border-[#C0563E]/40 bg-[#C0563E]/10 text-[#A8432F]"
@@ -54,16 +77,52 @@ function StatusPill({ order }: { order: OrderView }) {
 
   return (
     <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${tone}`}>
-      {STATUS_LABEL[order.commissionStatus]}
+      Comissão: {COMMISSION_LABEL[order.commissionStatus]}
     </span>
   );
 }
 
 export function PedidosClient({ orders }: { orders: OrderView[] }) {
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | FulfillmentStatus>("ALL");
+  const [period, setPeriod] = useState<"ALL" | "7" | "30">("ALL");
+  const [page, setPage] = useState(0);
+  const [cancelingCode, setCancelingCode] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+
+  // Referência estável: o pedido mais recente da própria lista, em vez de Date.now().
+  const newestOrderTime = useMemo(
+    () => orders.reduce((max, order) => Math.max(max, new Date(order.createdAt).getTime()), 0),
+    [orders]
+  );
+
+  const filtered = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    return orders.filter((order) => {
+      if (statusFilter !== "ALL" && order.status !== statusFilter) return false;
+      if (
+        period !== "ALL" &&
+        newestOrderTime - new Date(order.createdAt).getTime() > Number(period) * DAY_MS
+      ) {
+        return false;
+      }
+      if (!term) return true;
+      return (
+        order.code.toLowerCase().includes(term) ||
+        order.customerName.toLowerCase().includes(term) ||
+        order.items.some((item) => item.productName.toLowerCase().includes(term))
+      );
+    });
+  }, [orders, query, statusFilter, period, newestOrderTime]);
+
+  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pages - 1);
+  const visible = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+
   const handleExport = () => {
-    if (orders.length === 0) return;
+    if (filtered.length === 0) return;
     const csv = ordersToCsv(
-      orders.map((order) => ({
+      filtered.map((order) => ({
         code: order.code,
         createdAt: order.createdAt,
         customerName: order.customerName,
@@ -100,29 +159,73 @@ export function PedidosClient({ orders }: { orders: OrderView[] }) {
           <button
             type="button"
             onClick={handleExport}
-            disabled={orders.length === 0}
+            disabled={filtered.length === 0}
             className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#E4DED8] bg-white px-4 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-rosegold hover:text-[#141210] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <FileDown className="h-3.5 w-3.5" />
             Exportar CSV
           </button>
           <span className="tabular-price text-xs font-semibold text-[#4A4440]">
-            {orders.length} {orders.length === 1 ? "pedido" : "pedidos"}
+            {filtered.length} {filtered.length === 1 ? "pedido" : "pedidos"}
           </span>
         </div>
       </div>
 
+      <div className={`${PANEL} flex flex-wrap items-center gap-3 p-4`}>
+        <label className="flex min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-[#E4DED8] bg-white px-3 py-2">
+          <Search className="h-4 w-4 text-[#6E6660]" />
+          <input
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setPage(0);
+            }}
+            placeholder="Buscar por código, cliente ou peça"
+            className="w-full bg-transparent text-sm text-[#141210] outline-none placeholder:text-[#9A918B]"
+          />
+        </label>
+        <select
+          value={statusFilter}
+          onChange={(event) => {
+            setStatusFilter(event.target.value as "ALL" | FulfillmentStatus);
+            setPage(0);
+          }}
+          aria-label="Filtrar por situação"
+          className="rounded-xl border border-[#E4DED8] bg-white px-3 py-2 text-xs font-semibold text-[#4A4440]"
+        >
+          <option value="ALL">Todas as situações</option>
+          {(Object.keys(ORDER_STATUS_LABEL) as FulfillmentStatus[]).map((status) => (
+            <option key={status} value={status}>
+              {ORDER_STATUS_LABEL[status]}
+            </option>
+          ))}
+        </select>
+        <select
+          value={period}
+          onChange={(event) => {
+            setPeriod(event.target.value as "ALL" | "7" | "30");
+            setPage(0);
+          }}
+          aria-label="Filtrar por período"
+          className="rounded-xl border border-[#E4DED8] bg-white px-3 py-2 text-xs font-semibold text-[#4A4440]"
+        >
+          <option value="ALL">Qualquer período</option>
+          <option value="7">Últimos 7 dias</option>
+          <option value="30">Últimos 30 dias</option>
+        </select>
+      </div>
+
       <div className={`${PANEL} p-5 sm:p-6`}>
-        {orders.length === 0 ? (
+        {visible.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#E4DED8] bg-[#F7F4F1] px-6 py-14 text-center">
-            <p className="font-serif text-2xl">Nenhum pedido ainda</p>
+            <p className="font-serif text-2xl">Nenhum pedido encontrado</p>
             <p className="mt-2 text-xs text-[#4A4440]">
-              Eles aparecem aqui quando a sacola é enviada pelo WhatsApp.
+              Ajuste a busca ou os filtros para ver outros pedidos.
             </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {orders.map((order) => (
+            {visible.map((order) => (
               <article
                 key={order.code}
                 className="rounded-2xl border border-[#EDE3D8] bg-[#FCFAF8] p-4 transition-colors hover:border-rosegold/60"
@@ -132,7 +235,8 @@ export function PedidosClient({ orders }: { orders: OrderView[] }) {
                     <h2 className="tabular-price font-serif text-xl font-semibold">
                       #{order.code}
                     </h2>
-                    <StatusPill order={order} />
+                    <OrderStatusPill status={order.status} />
+                    <CommissionPill order={order} />
                     <span className="text-[11px] text-[#6E6660]">
                       {new Date(order.createdAt).toLocaleString("pt-BR")}
                       {order.customerName ? ` · ${order.customerName}` : ""}
@@ -157,20 +261,34 @@ export function PedidosClient({ orders }: { orders: OrderView[] }) {
                   ))}
                 </ul>
 
-                {!!order.confirmedAt && (
+                {order.confirmedAt && (
                   <p
                     className={`mt-2 text-[10px] ${order.stockShortfalls.length ? "font-semibold text-copper" : "text-[#6E6660]"}`}
                   >
                     {order.stockShortfalls.length
                       ? `Estoque insuficiente: ${order.stockShortfalls.join(" · ")}`
-                      : "Estoque baixado na confirmação"}
+                      : order.stockRestored
+                        ? "Estoque devolvido no cancelamento"
+                        : "Estoque baixado na confirmação"}
                   </p>
+                )}
+
+                {(order.shippedAt || order.deliveredAt || order.cancelReason) && (
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[#6E6660]">
+                    {order.shippedAt && (
+                      <span>Enviado em {new Date(order.shippedAt).toLocaleString("pt-BR")}</span>
+                    )}
+                    {order.deliveredAt && (
+                      <span>Entregue em {new Date(order.deliveredAt).toLocaleString("pt-BR")}</span>
+                    )}
+                    {order.cancelReason && <span>Motivo: {order.cancelReason}</span>}
+                  </div>
                 )}
 
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-[#EDE3D8] pt-3">
                   <div>
                     <p className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
-                      Sua comissão · {ORDER_STATUS_LABEL[order.status]}
+                      Sua comissão
                     </p>
                     <p className="tabular-price font-serif text-lg font-semibold text-copper">
                       {formatBRL(order.commissionInCents)}
@@ -202,7 +320,7 @@ export function PedidosClient({ orders }: { orders: OrderView[] }) {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    {!order.confirmedAt && (
+                    {order.status === "SENT_TO_WHATSAPP" && (
                       <button
                         type="button"
                         onClick={() => void confirmOrderAction(order.code)}
@@ -210,6 +328,26 @@ export function PedidosClient({ orders }: { orders: OrderView[] }) {
                       >
                         <Check className="h-3.5 w-3.5" />
                         Confirmar pedido
+                      </button>
+                    )}
+                    {order.status === "CONFIRMED" && (
+                      <button
+                        type="button"
+                        onClick={() => void markOrderShippedAction(order.code)}
+                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#3D6E9E]/60 px-4 py-2 text-[11px] font-semibold text-[#31577E] transition-colors hover:bg-[#3D6E9E]/10"
+                      >
+                        <Truck className="h-3.5 w-3.5" />
+                        Marcar enviado
+                      </button>
+                    )}
+                    {order.status === "SHIPPED" && (
+                      <button
+                        type="button"
+                        onClick={() => void markOrderDeliveredAction(order.code)}
+                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#3F8A64]/60 px-4 py-2 text-[11px] font-semibold text-[#2E6B4C] transition-colors hover:bg-[#3F8A64]/10"
+                      >
+                        <CheckCheck className="h-3.5 w-3.5" />
+                        Marcar entregue
                       </button>
                     )}
                     {order.commissionStatus === "PAYABLE" && (
@@ -222,11 +360,14 @@ export function PedidosClient({ orders }: { orders: OrderView[] }) {
                         Marcar pago
                       </button>
                     )}
-                    {order.status !== "CANCELLED" && (
+                    {order.status !== "CANCELLED" && order.status !== "DELIVERED" && (
                       <button
                         type="button"
-                        onClick={() => void cancelOrderAction(order.code)}
-                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-muted hover:text-[#141210]"
+                        onClick={() => {
+                          setCancelingCode(order.code);
+                          setCancelReason("");
+                        }}
+                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-[#A8432F] hover:text-[#A8432F]"
                       >
                         {order.confirmedAt ? (
                           <RotateCcw className="h-3.5 w-3.5" />
@@ -238,8 +379,60 @@ export function PedidosClient({ orders }: { orders: OrderView[] }) {
                     )}
                   </div>
                 </div>
+
+                {cancelingCode === order.code && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-[#E4DED8] bg-white p-3">
+                    <input
+                      value={cancelReason}
+                      onChange={(event) => setCancelReason(event.target.value)}
+                      placeholder="Motivo do cancelamento (opcional)"
+                      className="min-w-[200px] flex-1 rounded-xl border border-[#E4DED8] px-3 py-2 text-xs text-[#141210] outline-none placeholder:text-[#9A918B] focus:border-rosegold"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void cancelOrderAction(order.code, cancelReason);
+                        setCancelingCode(null);
+                      }}
+                      className="cursor-pointer rounded-full bg-[#A8432F] px-4 py-2 text-[11px] font-semibold text-white"
+                    >
+                      Confirmar cancelamento
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCancelingCode(null)}
+                      className="cursor-pointer rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440]"
+                    >
+                      Voltar
+                    </button>
+                  </div>
+                )}
               </article>
             ))}
+          </div>
+        )}
+
+        {pages > 1 && (
+          <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#EDE3D8] pt-4">
+            <button
+              type="button"
+              disabled={safePage === 0}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              className="cursor-pointer rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440] disabled:opacity-40"
+            >
+              Anterior
+            </button>
+            <span className="tabular-price text-[11px] text-[#6E6660]">
+              Página {safePage + 1} de {pages}
+            </span>
+            <button
+              type="button"
+              disabled={safePage >= pages - 1}
+              onClick={() => setPage((p) => p + 1)}
+              className="cursor-pointer rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440] disabled:opacity-40"
+            >
+              Próxima
+            </button>
           </div>
         )}
       </div>

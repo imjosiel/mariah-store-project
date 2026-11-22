@@ -9,7 +9,9 @@ import {
   cancelOrderInDb,
   confirmOrderInDb,
   createOrder,
+  markOrderDeliveredInDb,
   markOrderPaid,
+  markOrderShippedInDb,
   refreshCommissionStatuses,
   setNfNumberInDb,
   type OrderView,
@@ -27,6 +29,7 @@ async function requireAdmin(): Promise<void> {
 function revalidateAdmin(): void {
   revalidatePath("/admin");
   revalidatePath("/admin/produtos");
+  revalidatePath("/admin/pedidos");
 }
 
 export async function createOrderAction(
@@ -44,9 +47,21 @@ export async function confirmOrderAction(code: string): Promise<void> {
   revalidateAdmin();
 }
 
-export async function cancelOrderAction(code: string): Promise<void> {
+export async function cancelOrderAction(code: string, reason = ""): Promise<void> {
   await requireAdmin();
-  await cancelOrderInDb(code);
+  await cancelOrderInDb(code, reason);
+  revalidateAdmin();
+}
+
+export async function markOrderShippedAction(code: string): Promise<void> {
+  await requireAdmin();
+  await markOrderShippedInDb(code);
+  revalidateAdmin();
+}
+
+export async function markOrderDeliveredAction(code: string): Promise<void> {
+  await requireAdmin();
+  await markOrderDeliveredInDb(code);
   revalidateAdmin();
 }
 

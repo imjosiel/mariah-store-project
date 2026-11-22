@@ -72,13 +72,16 @@ SENT_TO_WHATSAPP  --[admin: confirmar]-->  CONFIRMED
    • gera código MS-xxxx (se ainda não houver) — NUNCA derivar do subtotal
 
 CONFIRMED  --[+7 dias, sem cancelamento]-->  PAYABLE (comissão)
-CONFIRMED  --[admin: enviado]-->  SHIPPED
-qualquer   --[admin: cancelar]-->  CANCELLED (comissão → REVERSED)
+CONFIRMED  --[admin: marcar enviado]-->  SHIPPED
+SHIPPED    --[admin: marcar entregue]-->  DELIVERED
+qualquer, exceto DELIVERED/CANCELLED --[admin: cancelar]--> CANCELLED
 ```
 
-**Bug conhecido a corrigir:** em `src/context/BagContext.tsx`, `buildOrderSummaryText` gera `refCode` a partir do subtotal. Duas sacolas iguais geram o mesmo código. O código deve ser criado no **nascimento do pedido** e gravado em `Order.code`.
+**Bug corrigido:** o código `MS-xxxx` era derivado do subtotal; hoje `getOrderCode()` (`src/lib/bagStore.ts`) gera um código aleatório no nascimento da sacola e o persiste, antes do pedido existir no banco.
 
-**Idempotência é obrigatória:** confirmar o mesmo pedido duas vezes não pode baixar estoque duas vezes nem duplicar comissão.
+**Idempotência é obrigatória:** confirmar o mesmo pedido duas vezes não pode baixar estoque duas vezes nem duplicar comissão. Cancelar duas vezes não pode estornar estoque duas vezes (`stockRestoredAt`). Pedido cancelado **nunca** volta a `CONFIRMED` — as regras puras estão em `src/domain/order-status.ts`.
+
+**Cancelamento:** registra `cancelledAt` e `cancelReason` (motivo opcional digitado no admin). Se o pedido já havia sido confirmado, o estoque é devolvido na mesma transação e `stockRestoredAt` guarda a idempotência. A comissão vira `REVERSED`, **exceto se já estiver `PAID`** — não se reverte um repasse já feito (§4). Pedido entregue não pode ser cancelado. A tela também permite marcar **enviado** e **entregue**, com data registrada em cada transição.
 
 ## 6. ERP/CRM mínimo (escopo)
 
