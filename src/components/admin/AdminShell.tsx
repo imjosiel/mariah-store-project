@@ -9,6 +9,7 @@ import {
   ListFilter,
   Package,
   ShoppingBag,
+  ShoppingCart,
   Store,
   UserPlus,
   Wallet,
@@ -28,6 +29,7 @@ export const INK_MUTED = "text-[#6E6660]";
 
 const LINKS = [
   { href: "/admin", label: "Visão geral", icon: LayoutDashboard },
+  { href: "/admin/pdv", label: "Venda na loja", icon: ShoppingCart },
   { href: "/admin/pedidos", label: "Pedidos", icon: ShoppingBag },
   { href: "/admin/financeiro", label: "Financeiro", icon: Wallet },
   { href: "/admin/produtos", label: "Produtos", icon: Package },

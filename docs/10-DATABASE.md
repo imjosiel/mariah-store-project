@@ -47,6 +47,10 @@ npm run verify
 
 Detalhes de implementação **não aparecem na tela** — ficam apenas neste documento e no `docs/07`. A interface fala de peça, cor, tamanho e preço; não menciona R2, upload, modelo de IA, "regra de ouro" nem prazos de comissão. Isso evita vazar arquitetura para quem usa o ERP e evita textos desatualizados quando a infra muda.
 - Cota por loja em `StorageSetting` (padrão **1 GB**), ajustável pelo super admin em `/admin/armazenamento`. O upload soma os tamanhos dos objetos via `ListObjectsV2` e bloqueia se estourar o limite. As 11 imagens antigas em `public/products/` seguem como fallback.
+- **PDV:** `/admin/pdv` cria venda presencial com `createPosOrder` (`src/lib/orderStore.ts`):
+  pedido `CONFIRMED` com `channel: LOJA`, estoque baixado com `updateMany` condicional
+  (`stock >= quantidade`), código `MS-xxxx` gerado fora da transação (evita timeout do Prisma)
+  e evento `PAYMENT_RECEIVED` na mesma escrita. Nunca vende sem estoque.
 - **Venda e dinheiro:** `Order.channel` (`ONLINE`/`LOJA`, default `ONLINE`) e `Order.paymentMethod`
   discriminam a origem e a forma de pagamento. `FinancialEvent` guarda recebimentos, repasses e
   estornos (com `externalId` único para idempotência, valor, taxa, parte da loja e comprovante).

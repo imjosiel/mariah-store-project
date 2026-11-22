@@ -91,6 +91,13 @@ A origem existe porque a regra de arrependimento de 7 dias é só para venda for
 estabelecimento — a loja física não tem esse prazo legal, embora possa aceitar troca
 por cortesia (decisão da dona, registrada caso a caso, sem regra automática de prazo).
 
+A venda presencial entra por `/admin/pdv`: escolhe peça, cor, tamanho, quantidade, valor
+efetivamente recebido (com desconto de balcão) e forma de pagamento. O pedido nasce
+`CONFIRMED`, o estoque é baixado na mesma transação (nunca vende sem estoque) e um evento
+`PAYMENT_RECEIVED` é registrado com a parte da loja. O desconto reduz a margem e, portanto,
+a comissão — conforme §2. O repasse da comissão da loja física segue em discussão; por ora
+usa-se o padrão de 7 dias.
+
 Repasses e estornos vivem em `FinancialEvent` (`PAYMENT_RECEIVED`, `COMMISSION_PAID`,
 `COMMISSION_REFUNDED`, `ORDER_REFUNDED`), com valor, taxa, parte da loja, data,
 comprovante e `externalId` único para idempotência de webhook. O super admin vê o

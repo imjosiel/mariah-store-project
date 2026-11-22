@@ -288,6 +288,113 @@ export async function listFinancialEvents(): Promise<FinancialEventView[]> {
   }));
 }
 
+/** Gerado fora da transação: evita estourar o timeout do Prisma em conexões lentas. */
+async function nextOrderCode(client: Pick<typeof prisma, "order">): Promise<string> {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const code = `MS-${Math.floor(1000 + Math.random() * 9000)}`;
+    const existing = await client.order.findUnique({ where: { code }, select: { id: true } });
+    if (!existing) return code;
+  }
+  throw new Error("Não foi possível gerar um código de pedido");
+}
+
+export interface PosOrderInput {
+  variantId: string;
+  sizeLabel: string;
+  quantity: number;
+  /** Valor efetivamente recebido por peça — já com eventual desconto de balcão. */
+  unitPriceInCents: number;
+  paymentMethod: PaymentMethod;
+  customerName: string;
+}
+
+/**
+ * Venda presencial: pedido nasce CONFIRMED, estoque é baixado na mesma
+ * transação e o recebimento vira evento financeiro. Nunca vende sem estoque.
+ */
+export async function createPosOrder(
+  input: PosOrderInput
+): Promise<{ code: string; commissionInCents: number }> {
+  if (!Number.isInteger(input.quantity) || input.quantity < 1) {
+    throw new Error("Quantidade inválida");
+  }
+  if (!Number.isInteger(input.unitPriceInCents) || input.unitPriceInCents <= 0) {
+    throw new Error("Valor inválido");
+  }
+
+  const code = await nextOrderCode(prisma);
+
+  return prisma.$transaction(async (tx) => {
+    const variant = await tx.productVariant.findUnique({
+      where: { id: input.variantId },
+      include: { product: true },
+    });
+    if (!variant || variant.product.archivedAt) throw new Error("Peça não encontrada");
+
+    const stock = await tx.variantStock.findUnique({
+      where: {
+        variantId_sizeLabel: { variantId: variant.id, sizeLabel: input.sizeLabel },
+      },
+    });
+    if (!stock) throw new Error("Tamanho não disponível nesta cor");
+
+    const decremented = await tx.variantStock.updateMany({
+      where: { id: stock.id, stock: { gte: input.quantity } },
+      data: { stock: { decrement: input.quantity } },
+    });
+    if (decremented.count !== 1) {
+      throw new Error(`Estoque insuficiente: há ${stock.stock} disponível(is)`);
+    }
+
+    const totalInCents = input.unitPriceInCents * input.quantity;
+    const costInCents = variant.product.costInCents * input.quantity;
+    const commissionInCents = calculateCommission({
+      costInCents,
+      receivedInCents: totalInCents,
+    });
+    const now = new Date();
+
+    await tx.order.create({
+      data: {
+        code,
+        customerName: input.customerName.trim() || null,
+        totalInCents,
+        status: "CONFIRMED",
+        channel: "LOJA",
+        paymentMethod: input.paymentMethod,
+        confirmedAt: now,
+        commissionInCents,
+        // Repasse da loja física ainda será decidido; mantém o padrão atual.
+        commissionStatus: "PENDING",
+        commissionAvailableAt: commissionAvailableAt(now),
+        items: {
+          create: [{
+            productId: variant.productId,
+            variantId: variant.id,
+            sizeLabel: input.sizeLabel,
+            quantity: input.quantity,
+            productName: variant.product.name,
+            colorName: variant.colorName,
+            unitPriceInCents: input.unitPriceInCents,
+            unitCostInCents: variant.product.costInCents,
+          }],
+        },
+        financialEvents: {
+          create: [{
+            type: "PAYMENT_RECEIVED",
+            amountInCents: totalInCents,
+            storeAmountInCents: totalInCents - commissionInCents,
+            feeInCents: 0,
+            note: "Venda presencial",
+          }],
+        },
+      },
+    });
+
+    return { code, commissionInCents };
+  }, { timeout: 15_000 });
+}
+
 export async function setOrderSaleInfo(
   code: string,
   channel: SaleChannel,
