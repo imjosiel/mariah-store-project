@@ -91,6 +91,18 @@ A origem existe porque a regra de arrependimento de 7 dias é só para venda for
 estabelecimento — a loja física não tem esse prazo legal, embora possa aceitar troca
 por cortesia (decisão da dona, registrada caso a caso, sem regra automática de prazo).
 
+**Configuração no painel:** o super admin ajusta em `/admin/financeiro/regras` o prazo de
+liberação por origem (`onlineGraceDays`, `storeGraceDays` — 0 = libera na hora) e a alíquota
+(`commissionBps`). Os padrões são 7 dias para ambos e 10%. Pedidos antigos mantêm os valores
+calculados na confirmação; as regras valem para pedidos novos. `graceDaysForChannel` e
+`commissionBpsOr` (`src/domain/commission.ts`) aplicam fallback seguro. Segredos de gateway
+nunca entram no painel — ficam em variáveis de ambiente.
+
+**Pós-venda:** troca, devolução ou defeito são registrados em cada pedido (`PostSaleEvent`),
+com motivo obrigatório, quem autorizou e três efeitos escolhidos na hora: devolver estoque,
+estornar valor e reverter comissão. O pedido passa a `RETURNED` e cada efeito gera seu
+`FinancialEvent`. Não existe prazo automático para cortesia — a dona decide caso a caso.
+
 A venda presencial entra por `/admin/pdv`: escolhe peça, cor, tamanho, quantidade, valor
 efetivamente recebido (com desconto de balcão) e forma de pagamento. O pedido nasce
 `CONFIRMED`, o estoque é baixado na mesma transação (nunca vende sem estoque) e um evento

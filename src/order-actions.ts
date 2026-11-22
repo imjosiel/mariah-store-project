@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
 import { canAccessAdmin, canManageAdmins } from "@/domain/admin-access";
+import { updateCommissionSettings } from "@/lib/commissionSettings";
 import { getAdminEmails, getSuperAdminEmail } from "@/lib/adminStore";
 import {
   cancelOrderInDb,
@@ -15,6 +16,7 @@ import {
   markOrderShippedInDb,
   refreshCommissionStatuses,
   registerFinancialEvent,
+  registerPostSale,
   setNfNumberInDb,
   setOrderSaleInfo,
   type OrderView,
@@ -133,5 +135,34 @@ export async function registerFinancialEventAction(input: {
 }): Promise<void> {
   await requireSuperAdmin();
   await registerFinancialEvent(input);
+  revalidateAdmin();
+}
+
+export async function updateCommissionSettingsAction(input: {
+  onlineGraceDays: number;
+  storeGraceDays: number;
+  commissionBps: number;
+}): Promise<void> {
+  await requireSuperAdmin();
+  const session = await auth();
+  await updateCommissionSettings(input, session?.user?.email ?? "desconhecido");
+  revalidateAdmin();
+}
+
+export async function registerPostSaleAction(input: {
+  orderCode: string;
+  type: "TROCA" | "DEVOLUCAO" | "DEFEITO";
+  reason: string;
+  restock: boolean;
+  refunded: boolean;
+  commissionReversed: boolean;
+  note?: string;
+}): Promise<void> {
+  await requireAdmin();
+  const session = await auth();
+  await registerPostSale({
+    ...input,
+    authorizedByEmail: session?.user?.email ?? "desconhecido",
+  });
   revalidateAdmin();
 }

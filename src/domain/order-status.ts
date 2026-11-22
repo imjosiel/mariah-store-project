@@ -9,6 +9,7 @@ export type FulfillmentStatus =
   | "CONFIRMED"
   | "SHIPPED"
   | "DELIVERED"
+  | "RETURNED"
   | "CANCELLED";
 
 export interface FulfillmentOrder {
@@ -32,7 +33,11 @@ export function canDeliverOrder(order: FulfillmentOrder): boolean {
 
 /** Depois de entregue, a venda está encerrada. */
 export function canCancelOrder(order: FulfillmentOrder): boolean {
-  return order.status !== "CANCELLED" && order.status !== "DELIVERED";
+  return (
+    order.status !== "CANCELLED" &&
+    order.status !== "DELIVERED" &&
+    order.status !== "RETURNED"
+  );
 }
 
 /** Só devolve estoque de pedido confirmado, e uma única vez. */

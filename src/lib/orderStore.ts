@@ -4,6 +4,7 @@ import type {
   Order,
   OrderItem,
   PaymentMethod,
+  PostSaleEvent,
   Prisma,
   SaleChannel,
 } from "@prisma/client";
@@ -12,9 +13,12 @@ import {
   advanceCommission,
   calculateCommission,
   commissionAvailableAt,
+  commissionBpsOr,
+  graceDaysForChannel,
   markCommissionPaid,
   type CommissionStatus,
 } from "../domain/commission";
+import { getCommissionSettings } from "./commissionSettings";
 import {
   canCancelOrder,
   canConfirmOrder,
@@ -50,6 +54,16 @@ export interface OrderView {
   channel: SaleChannel;
   paymentMethod: PaymentMethod | null;
   financialEvents: FinancialEventView[];
+  postSales: Array<{
+    id: string;
+    type: PostSaleEvent["type"];
+    reason: string;
+    authorizedByEmail: string;
+    restock: boolean;
+    refunded: boolean;
+    commissionReversed: boolean;
+    createdAt: string;
+  }>;
   createdAt: string;
   confirmedAt: string | null;
   shippedAt: string | null;
@@ -73,7 +87,11 @@ export interface OrderView {
 }
 
 function toView(
-  order: Order & { items: OrderItem[]; financialEvents?: FinancialEvent[] }
+  order: Order & {
+    items: OrderItem[];
+    financialEvents?: FinancialEvent[];
+    postSaleEvents?: PostSaleEvent[];
+  }
 ): OrderView {
   return {
     code: order.code,
@@ -103,6 +121,16 @@ function toView(
       externalId: event.externalId,
       receiptUrl: event.receiptUrl,
       note: event.note,
+    })),
+    postSales: (order.postSaleEvents ?? []).map((event) => ({
+      id: event.id,
+      type: event.type,
+      reason: event.reason,
+      authorizedByEmail: event.authorizedByEmail,
+      restock: event.restock,
+      refunded: event.refunded,
+      commissionReversed: event.commissionReversed,
+      createdAt: event.createdAt.toISOString(),
     })),
     createdAt: order.createdAt.toISOString(),
     confirmedAt: order.confirmedAt?.toISOString() ?? null,
@@ -197,7 +225,7 @@ export async function createOrder(input: CreateOrderInput): Promise<OrderView> {
 
 export async function listOrders(): Promise<OrderView[]> {
   const orders = await prisma.order.findMany({
-    include: { items: true, financialEvents: true },
+    include: { items: true, financialEvents: true, postSaleEvents: true },
     orderBy: { createdAt: "desc" },
   });
   return orders.map(toView);
@@ -323,6 +351,7 @@ export async function createPosOrder(
   }
 
   const code = await nextOrderCode(prisma);
+  const settings = await getCommissionSettings();
 
   return prisma.$transaction(async (tx) => {
     const variant = await tx.productVariant.findUnique({
@@ -351,6 +380,7 @@ export async function createPosOrder(
     const commissionInCents = calculateCommission({
       costInCents,
       receivedInCents: totalInCents,
+      commissionBps: commissionBpsOr(settings),
     });
     const now = new Date();
 
@@ -366,7 +396,10 @@ export async function createPosOrder(
         commissionInCents,
         // Repasse da loja física ainda será decidido; mantém o padrão atual.
         commissionStatus: "PENDING",
-        commissionAvailableAt: commissionAvailableAt(now),
+        commissionAvailableAt: commissionAvailableAt(
+          now,
+          graceDaysForChannel(settings, "LOJA")
+        ),
         items: {
           create: [{
             productId: variant.productId,
@@ -407,6 +440,7 @@ export async function setOrderSaleInfo(
 }
 
 export async function confirmOrderInDb(code: string, at = new Date()): Promise<void> {
+  const settings = await getCommissionSettings();
   await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
       where: { code },
@@ -449,9 +483,13 @@ export async function confirmOrderInDb(code: string, at = new Date()): Promise<v
         commissionInCents: calculateCommission({
           costInCents: order.totalInCents - margin,
           receivedInCents: order.totalInCents,
+          commissionBps: commissionBpsOr(settings),
         }),
         commissionStatus: "PENDING",
-        commissionAvailableAt: commissionAvailableAt(at),
+        commissionAvailableAt: commissionAvailableAt(
+          at,
+          graceDaysForChannel(settings, order.channel)
+        ),
         stockShortfalls: shortfalls,
       },
     });
@@ -567,4 +605,88 @@ export async function refreshCommissionStatuses(now = new Date()): Promise<void>
       });
     }
   }
+}
+
+export interface RegisterPostSaleInput {
+  orderCode: string;
+  type: PostSaleEvent["type"];
+  reason: string;
+  authorizedByEmail: string;
+  restock: boolean;
+  refunded: boolean;
+  commissionReversed: boolean;
+  note?: string;
+}
+
+/** Troca/devolução: efeitos escolhidos pela loja, registrados na mesma transação. */
+export async function registerPostSale(input: RegisterPostSaleInput): Promise<void> {
+  if (!input.reason.trim()) throw new Error("Informe o motivo");
+
+  await prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({
+      where: { code: input.orderCode },
+      include: { items: true },
+    });
+    if (!order) throw new Error("Pedido não encontrado");
+    if (order.status === "RETURNED" || order.status === "CANCELLED") {
+      throw new Error("Este pedido já foi encerrado");
+    }
+
+    const restore = input.restock && !order.stockRestoredAt;
+    if (restore) {
+      for (const item of order.items) {
+        await tx.variantStock.updateMany({
+          where: { variantId: item.variantId, sizeLabel: item.sizeLabel },
+          data: { stock: { increment: item.quantity } },
+        });
+      }
+    }
+
+    if (input.refunded) {
+      await tx.financialEvent.create({
+        data: {
+          orderId: order.id,
+          type: "ORDER_REFUNDED",
+          amountInCents: order.totalInCents,
+          note: input.note?.trim() || `Estorno por ${input.type.toLowerCase()}`,
+        },
+      });
+    }
+
+    if (input.commissionReversed) {
+      await tx.financialEvent.create({
+        data: {
+          orderId: order.id,
+          type: "COMMISSION_REFUNDED",
+          amountInCents: order.commissionInCents,
+          note: input.note?.trim() || null,
+        },
+      });
+      await tx.order.update({
+        where: { id: order.id },
+        data: { commissionStatus: "REVERSED" },
+      });
+    }
+
+    await tx.postSaleEvent.create({
+      data: {
+        orderId: order.id,
+        type: input.type,
+        reason: input.reason.trim(),
+        authorizedByEmail: input.authorizedByEmail,
+        restock: input.restock,
+        refunded: input.refunded,
+        commissionReversed: input.commissionReversed,
+        note: input.note?.trim() || null,
+      },
+    });
+
+    await tx.order.update({
+      where: { id: order.id },
+      data: {
+        status: "RETURNED",
+        ...(restore ? { stockRestoredAt: new Date() } : {}),
+      },
+    });
+  });
 }

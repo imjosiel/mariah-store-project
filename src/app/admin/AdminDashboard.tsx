@@ -145,6 +145,11 @@ function StatusBreakdown({ orders }: { orders: readonly OrderView[] }) {
       count: orders.filter((o) => o.status === "DELIVERED").length,
     },
     {
+      label: "Trocado / devolvido",
+      color: "#6E5F88",
+      count: orders.filter((o) => o.status === "RETURNED").length,
+    },
+    {
       label: "Cancelado",
       color: "#8E7FA8",
       count: orders.filter((o) => o.status === "CANCELLED").length,

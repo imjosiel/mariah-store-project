@@ -25,6 +25,30 @@ export interface CommissionInput {
   commissionBps?: number;
 }
 
+export interface CommissionSettings {
+  onlineGraceDays: number;
+  storeGraceDays: number;
+  commissionBps: number;
+}
+
+/** Prazo de liberação por origem da venda, com fallback seguro. */
+export function graceDaysForChannel(
+  settings: CommissionSettings,
+  channel: "ONLINE" | "LOJA"
+): number {
+  const days = channel === "LOJA" ? settings.storeGraceDays : settings.onlineGraceDays;
+  return Number.isInteger(days) && days >= 0 ? days : REFUND_WINDOW_DAYS;
+}
+
+/** Alíquota configurável, limitada a 0–100% e com fallback seguro. */
+export function commissionBpsOr(
+  settings: CommissionSettings,
+  fallback: number = DEFAULT_COMMISSION_BPS
+): number {
+  const bps = settings.commissionBps;
+  return Number.isInteger(bps) && bps >= 0 && bps <= BPS_DIVISOR ? bps : fallback;
+}
+
 export interface CommissionableOrder {
   confirmedAt: Date | null;
   commissionInCents: number;

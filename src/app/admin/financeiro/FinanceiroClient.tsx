@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 import { formatBRL } from "@/lib/money";
 import { reaisToCents } from "@/domain/money";
@@ -102,6 +103,12 @@ export function FinanceiroClient({
           Repasses e estornos registrados. Hoje manuais; quando houver gateway, os eventos chegam
           automaticamente.
         </p>
+        <Link
+          href="/admin/financeiro/regras"
+          className="mt-3 inline-block rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-rosegold hover:text-[#141210]"
+        >
+          Regras de comissão
+        </Link>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

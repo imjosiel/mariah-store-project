@@ -21,6 +21,7 @@ import {
   markOrderDeliveredAction,
   markOrderPaidAction,
   markOrderShippedAction,
+  registerPostSaleAction,
   setNfNumberAction,
   setOrderSaleInfoAction,
 } from "@/order-actions";
@@ -40,8 +41,17 @@ const ORDER_STATUS_LABEL: Record<FulfillmentStatus, string> = {
   CONFIRMED: "Confirmado",
   SHIPPED: "Enviado",
   DELIVERED: "Entregue",
+  RETURNED: "Trocado / devolvido",
   CANCELLED: "Cancelado",
 };
+
+const POST_SALE_LABEL = {
+  TROCA: "Troca",
+  DEVOLUCAO: "Devolução",
+  DEFEITO: "Defeito",
+} as const;
+
+type PostSaleType = keyof typeof POST_SALE_LABEL;
 
 const PAGE_SIZE = 10;
 const DAY_MS = 86_400_000;
@@ -66,7 +76,7 @@ function OrderStatusPill({ status }: { status: FulfillmentStatus }) {
         ? "border-[#3D6E9E]/50 bg-[#3D6E9E]/10 text-[#31577E]"
         : status === "CONFIRMED"
           ? "border-[#C0563E]/40 bg-[#C0563E]/10 text-[#A8432F]"
-          : status === "CANCELLED"
+          : status === "CANCELLED" || status === "RETURNED"
             ? "border-[#8E7FA8]/50 bg-[#8E7FA8]/10 text-[#6E5F88]"
             : "border-[#D9923F]/50 bg-[#D9923F]/10 text-[#A66B23]";
 
@@ -105,6 +115,12 @@ export function PedidosClient({ orders }: { orders: OrderView[] }) {
   const [editingSaleCode, setEditingSaleCode] = useState<string | null>(null);
   const [saleChannel, setSaleChannel] = useState<Channel>("ONLINE");
   const [salePayment, setSalePayment] = useState<Payment | "">("");
+  const [postSaleCode, setPostSaleCode] = useState<string | null>(null);
+  const [postSaleType, setPostSaleType] = useState<PostSaleType>("TROCA");
+  const [postReason, setPostReason] = useState("");
+  const [postRestock, setPostRestock] = useState(true);
+  const [postRefunded, setPostRefunded] = useState(false);
+  const [postCommission, setPostCommission] = useState(false);
 
   // Referência estável: o pedido mais recente da própria lista, em vez de Date.now().
   const newestOrderTime = useMemo(
@@ -322,6 +338,20 @@ export function PedidosClient({ orders }: { orders: OrderView[] }) {
                   </div>
                 )}
 
+                {order.postSales.length > 0 && (
+                  <div className="mt-2 rounded-xl border border-[#E4DED8] bg-white p-3 text-[10px] text-[#6E6660]">
+                    <p className="font-semibold text-[#141210]">
+                      {POST_SALE_LABEL[order.postSales[0].type]} · {order.postSales[0].reason}
+                    </p>
+                    <p className="mt-0.5">
+                      Autorizado por {order.postSales[0].authorizedByEmail}
+                      {order.postSales[0].restock ? " · estoque devolvido" : ""}
+                      {order.postSales[0].refunded ? " · valor estornado" : ""}
+                      {order.postSales[0].commissionReversed ? " · comissão revertida" : ""}
+                    </p>
+                  </div>
+                )}
+
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-[#EDE3D8] pt-3">
                   <div>
                     <p className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
@@ -414,6 +444,25 @@ export function PedidosClient({ orders }: { orders: OrderView[] }) {
                         Cancelar
                       </button>
                     )}
+                    {order.confirmedAt &&
+                      order.status !== "CANCELLED" &&
+                      order.status !== "RETURNED" && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPostSaleCode(order.code);
+                            setPostSaleType("TROCA");
+                            setPostReason("");
+                            setPostRestock(true);
+                            setPostRefunded(false);
+                            setPostCommission(false);
+                          }}
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-[#A8432F] hover:text-[#A8432F]"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          Troca / devolução
+                        </button>
+                      )}
                   </div>
                 </div>
 
@@ -469,6 +518,86 @@ export function PedidosClient({ orders }: { orders: OrderView[] }) {
                     >
                       Cancelar
                     </button>
+                  </div>
+                )}
+
+                {postSaleCode === order.code && (
+                  <div className="mt-3 space-y-3 rounded-xl border border-[#E4DED8] bg-white p-3">
+                    <div className="flex flex-wrap gap-2">
+                      <select
+                        value={postSaleType}
+                        onChange={(event) => setPostSaleType(event.target.value as PostSaleType)}
+                        className="rounded-xl border border-[#E4DED8] bg-white px-3 py-2 text-xs text-[#141210]"
+                      >
+                        {(Object.keys(POST_SALE_LABEL) as PostSaleType[]).map((item) => (
+                          <option key={item} value={item}>
+                            {POST_SALE_LABEL[item]}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        value={postReason}
+                        onChange={(event) => setPostReason(event.target.value)}
+                        placeholder="Motivo (obrigatório)"
+                        className="min-w-[200px] flex-1 rounded-xl border border-[#E4DED8] px-3 py-2 text-xs text-[#141210] outline-none placeholder:text-[#9A918B] focus:border-rosegold"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-4 text-[11px] text-[#4A4440]">
+                      <label className="flex items-center gap-1.5">
+                        <input
+                          type="checkbox"
+                          checked={postRestock}
+                          onChange={(event) => setPostRestock(event.target.checked)}
+                          className="h-4 w-4 accent-copper"
+                        />
+                        Peça voltou ao estoque
+                      </label>
+                      <label className="flex items-center gap-1.5">
+                        <input
+                          type="checkbox"
+                          checked={postRefunded}
+                          onChange={(event) => setPostRefunded(event.target.checked)}
+                          className="h-4 w-4 accent-copper"
+                        />
+                        Valor estornado
+                      </label>
+                      <label className="flex items-center gap-1.5">
+                        <input
+                          type="checkbox"
+                          checked={postCommission}
+                          onChange={(event) => setPostCommission(event.target.checked)}
+                          className="h-4 w-4 accent-copper"
+                        />
+                        Reverter comissão
+                      </label>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={!postReason.trim()}
+                        onClick={() => {
+                          void registerPostSaleAction({
+                            orderCode: order.code,
+                            type: postSaleType,
+                            reason: postReason,
+                            restock: postRestock,
+                            refunded: postRefunded,
+                            commissionReversed: postCommission,
+                          });
+                          setPostSaleCode(null);
+                        }}
+                        className="cursor-pointer rounded-full bg-[#A8432F] px-4 py-2 text-[11px] font-semibold text-white disabled:opacity-40"
+                      >
+                        Registrar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPostSaleCode(null)}
+                        className="cursor-pointer rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440]"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
                   </div>
                 )}
 

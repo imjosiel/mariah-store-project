@@ -6,7 +6,9 @@ import {
   calculateCartCommission,
   calculateCommission,
   commissionAvailableAt,
+  commissionBpsOr,
   confirmOrder,
+  graceDaysForChannel,
   markCommissionPaid,
   type CommissionableOrder,
 } from "./commission";
@@ -157,6 +159,24 @@ describe("markCommissionPaid", () => {
       costInCents: 5000,
     });
     expect(markCommissionPaid(pending).commissionStatus).toBe("PENDING");
+  });
+});
+
+describe("configurações de comissão", () => {
+  const settings = { onlineGraceDays: 7, storeGraceDays: 0, commissionBps: 1200 };
+
+  it("usa o prazo da origem da venda", () => {
+    expect(graceDaysForChannel(settings, "ONLINE")).toBe(7);
+    expect(graceDaysForChannel(settings, "LOJA")).toBe(0);
+  });
+
+  it("cai para 7 dias com valor inválido", () => {
+    expect(graceDaysForChannel({ ...settings, storeGraceDays: -1 }, "LOJA")).toBe(7);
+  });
+
+  it("valida a alíquota e usa 10% como fallback", () => {
+    expect(commissionBpsOr(settings)).toBe(1200);
+    expect(commissionBpsOr({ ...settings, commissionBps: 20_000 })).toBe(1000);
   });
 });
 
