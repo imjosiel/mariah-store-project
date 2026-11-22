@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 
 import { createProductAction } from "@/admin-actions";
 import { makeCutout } from "@/lib/cutout";
@@ -55,6 +56,21 @@ export function NewProductForm({
   const [cutout, setCutout] = useState<File | null>(null);
   const [imageName, setImageName] = useState("");
   const [cutStatus, setCutStatus] = useState("");
+  const [preview, setPreview] = useState<string | null>(null);
+  const previewRef = useRef<string | null>(null);
+
+  const showPreview = (file: File) => {
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    const url = URL.createObjectURL(file);
+    previewRef.current = url;
+    setPreview(url);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    };
+  }, []);
   const [swatch, setSwatch] = useState("#6C2E3B");
   const [atmosphere, setAtmosphere] = useState<Atmosphere>(() =>
     deriveAtmosphere("#6C2E3B")
@@ -160,72 +176,94 @@ export function NewProductForm({
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Field name="colorName" label="Nome da cor" placeholder="Vinho Rosé" />
           <Field name="colorSlug" label="Slug da cor" placeholder="vinho-rose" />
-          <label className="block">
-            <span className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
-              Cor da amostra
-            </span>
-            <div className="mt-1 flex items-center gap-2">
-              <input
-                type="color"
-                name="swatch-color"
-                value={swatch}
-                onChange={(event) => {
-                  setSwatch(event.target.value);
-                  setAtmosphere(deriveAtmosphere(event.target.value));
-                }}
-                className="h-9 w-12 cursor-pointer rounded-lg border border-[#E4DED8] bg-white"
-                aria-label="Cor da amostra da peça"
-              />
-              <input
-                name="swatchHex"
-                value={swatch}
-                onChange={(event) => {
-                  setSwatch(event.target.value);
-                  setAtmosphere(deriveAtmosphere(event.target.value));
-                }}
-                className={input}
-                placeholder="#6C2E3B"
-              />
-            </div>
-          </label>
-          <div className="sm:col-span-2">
-            <span className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
-              Imagem da peça
-            </span>
-            <div className="mt-1 flex flex-wrap items-center gap-2">
-              <label className="flex cursor-pointer items-center gap-1.5 rounded-full border border-[#E4DED8] bg-white px-3 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-rosegold hover:text-[#141210]">
-                Selecionar arquivo
+          <div className="space-y-4">
+            <label className="block">
+              <span className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
+                Cor da amostra
+              </span>
+              <div className="mt-1 flex items-center gap-2">
                 <input
-                  type="file"
-                  name="image"
-                  accept="image/webp,image/png,image/jpeg"
-                  className="sr-only"
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    setCutout(null);
-                    setImageName(file.name);
-                    setCutStatus("Removendo fundo…");
-                    try {
-                      const result = await makeCutout(file, setCutStatus);
-                      setCutout(result);
-                      setImageName(result.name);
-                      const suggested = await extractDominantColor(result);
-                      if (suggested) {
-                        setSwatch(suggested);
-                        setAtmosphere(deriveAtmosphere(suggested));
-                      }
-                    } catch {
-                      setCutStatus("Não foi possível remover o fundo.");
-                    } finally {
-                      setCutStatus("");
-                    }
+                  type="color"
+                  name="swatch-color"
+                  value={swatch}
+                  onChange={(event) => {
+                    setSwatch(event.target.value);
+                    setAtmosphere(deriveAtmosphere(event.target.value));
                   }}
+                  className="h-9 w-12 cursor-pointer rounded-lg border border-[#E4DED8] bg-white"
+                  aria-label="Cor da amostra da peça"
                 />
-              </label>
-              {imageName && <span className="text-[10px] text-[#6E6660]">{imageName}</span>}
+                <input
+                  name="swatchHex"
+                  value={swatch}
+                  onChange={(event) => {
+                    setSwatch(event.target.value);
+                    setAtmosphere(deriveAtmosphere(event.target.value));
+                  }}
+                  className={input}
+                  placeholder="#6C2E3B"
+                />
+              </div>
+            </label>
+            <div>
+              <span className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
+                Imagem da peça
+              </span>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <label className="flex cursor-pointer items-center gap-1.5 rounded-full border border-[#E4DED8] bg-white px-3 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-rosegold hover:text-[#141210]">
+                  Selecionar arquivo
+                  <input
+                    type="file"
+                    name="image"
+                    accept="image/webp,image/png,image/jpeg"
+                    className="sr-only"
+                    onChange={async (event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) return;
+                      setCutout(null);
+                      setImageName(file.name);
+                      showPreview(file);
+                      setCutStatus("Removendo fundo…");
+                      try {
+                        const result = await makeCutout(file, setCutStatus);
+                        setCutout(result);
+                        setImageName(result.name);
+                        showPreview(result);
+                        const suggested = await extractDominantColor(result);
+                        if (suggested) {
+                          setSwatch(suggested);
+                          setAtmosphere(deriveAtmosphere(suggested));
+                        }
+                      } catch {
+                        setCutStatus("Não foi possível remover o fundo.");
+                      } finally {
+                        setCutStatus("");
+                      }
+                    }}
+                  />
+                </label>
+                {imageName && <span className="text-[10px] text-[#6E6660]">{imageName}</span>}
+              </div>
+              {cutStatus && <p className="mt-1 text-[10px] text-[#6E6660]">{cutStatus}</p>}
             </div>
-            {cutStatus && <p className="mt-1 text-[10px] text-[#6E6660]">{cutStatus}</p>}
+          </div>
+          <div className="flex items-center justify-center rounded-xl border border-dashed border-[#E4DED8] bg-[#FDFAF8] p-3 sm:min-h-[188px]">
+            {preview ? (
+              <div className="relative h-44 w-full">
+                <Image
+                  src={preview}
+                  alt="Prévia da peça"
+                  fill
+                  sizes="(max-width: 640px) 100vw, 50vw"
+                  className="object-contain"
+                  unoptimized
+                />
+              </div>
+            ) : (
+              <span className="text-center text-[11px] text-[#9A918B]">
+                A prévia da peça aparece aqui
+              </span>
+            )}
           </div>
           <div className="sm:col-span-2 border-t border-[#E4DED8] pt-4">
             <AtmosphereFields
