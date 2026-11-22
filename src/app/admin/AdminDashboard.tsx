@@ -125,24 +125,29 @@ function CommissionChart({ orders }: { orders: readonly OrderView[] }) {
 function StatusBreakdown({ orders }: { orders: readonly OrderView[] }) {
   const segments = [
     {
-      label: "A receber",
+      label: "Aguardando confirmação",
       color: "#D9923F",
-      count: orders.filter((o) => !o.confirmedAt || o.commissionStatus === "PENDING").length,
+      count: orders.filter((o) => o.status === "SENT_TO_WHATSAPP").length,
     },
     {
-      label: "Liberado",
+      label: "Confirmado",
       color: "#C0563E",
-      count: orders.filter((o) => o.commissionStatus === "PAYABLE").length,
+      count: orders.filter((o) => o.status === "CONFIRMED").length,
     },
     {
-      label: "Pago",
+      label: "Enviado",
+      color: "#3D6E9E",
+      count: orders.filter((o) => o.status === "SHIPPED").length,
+    },
+    {
+      label: "Entregue",
       color: "#3F8A64",
-      count: orders.filter((o) => o.commissionStatus === "PAID").length,
+      count: orders.filter((o) => o.status === "DELIVERED").length,
     },
     {
-      label: "Revertido",
+      label: "Cancelado",
       color: "#8E7FA8",
-      count: orders.filter((o) => o.commissionStatus === "REVERSED").length,
+      count: orders.filter((o) => o.status === "CANCELLED").length,
     },
   ];
   const total = segments.reduce((sum, segment) => sum + segment.count, 0);
@@ -159,7 +164,7 @@ function StatusBreakdown({ orders }: { orders: readonly OrderView[] }) {
     <div className={`${PANEL} p-5 sm:p-6`}>
       <h2 className="font-serif text-xl font-semibold">Status dos pedidos</h2>
       <p className="mt-0.5 text-[11px] text-[#6E6660]">
-        Distribuição por etapa da comissão
+        Distribuição por situação do pedido
       </p>
 
       <div className="mt-5 flex items-center gap-6">
