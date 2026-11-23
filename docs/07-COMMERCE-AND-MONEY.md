@@ -130,6 +130,26 @@ regra desta seção; por isso o repasse deve usar **`fixedValue`** com o valor e
 centavos calculado aqui (10% da margem), nunca percentual do total. Taxas continuam
 fora da base da comissão.
 
+### Simulação de custos (congelada em 2026-11-23, catálogo real)
+
+O gateway cobra sobre o **valor bruto da cobrança**, nunca sobre o lucro. Taxas públicas
+do Asaas: Pix recebido **R$ 1,99 fixo** por transação (promocional R$ 0,99 nos 3 primeiros
+meses); cartão de crédito à vista **R$ 0,49 + 2,99%**; 2–6x **3,49%**; 7–12x **3,99%**;
+boleto R$ 1,99. Confirmar na tabela oficial antes de integrar.
+
+A comissão é 10% da **margem bruta**, não do preço. Com as margens atuais do catálogo
+(50% a 66% do preço), ela equivale a **~5% a ~6,6% do bruto**. Somando o gateway, o custo
+combinado para o lojista fica entre **~5,5% e ~11% do bruto** — não 15% com este catálogo.
+
+| Peça (preço / custo / margem) | Pix: gateway + comissão | Cartão 12x: gateway + comissão |
+|---|---|---|
+| Blazer Aurora — 389 / 195 / 194 | 1,99 + 19,40 = 21,39 (5,5%) | 16,01 + 19,40 = 35,41 (9,1%) |
+| Camiseta — 399 / 135 / 264 | 1,99 + 26,40 = 28,39 (7,1%) | 16,41 + 26,40 = 42,81 (10,7%) |
+
+A comissão **não muda** com a forma de pagamento: o gateway é custo da loja. A NF é gratuita
+(NFF) e o DAS do MEI é fixo mensal (~R$ 82), sem incidência por venda — por isso não entram
+nessa conta. Só entraria imposto por transação se o enquadramento mudar.
+
 ## 6. ERP/CRM mínimo (escopo)
 
 Como não há sistema anterior para integrar, construímos o mínimo. **Não é um ERP completo.**
