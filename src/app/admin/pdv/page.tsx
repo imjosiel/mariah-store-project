@@ -28,6 +28,7 @@ export default async function PdvPage() {
             id: variant.id,
             colorName: variant.colorName,
             swatchHex: variant.swatchHex,
+            imageUrl: variant.imageUrl,
             stocks: variant.stocks,
           })),
         }))}

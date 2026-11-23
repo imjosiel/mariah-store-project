@@ -21,6 +21,7 @@ type Product = {
     id: string;
     colorName: string;
     swatchHex: string;
+    imageUrl: string;
     stocks: Array<{ sizeLabel: string; stock: number }>;
   }>;
 };
@@ -31,6 +32,7 @@ type CartItem = {
   sizeLabel: string;
   productName: string;
   colorName: string;
+  swatchHex: string;
   imageUrl: string;
   unitPriceInCents: number;
   unitCostInCents: number;
@@ -153,7 +155,8 @@ export function PdvClient({
               sizeLabel,
               productName: product.name,
               colorName: variant.colorName,
-              imageUrl: product.imageUrl,
+              swatchHex: variant.swatchHex,
+              imageUrl: variant.imageUrl,
               unitPriceInCents,
               unitCostInCents: product.costInCents,
               quantity: qty,
@@ -432,7 +435,7 @@ export function PdvClient({
                 className="flex items-center gap-3 rounded-xl border border-[#EDE3D8] bg-[#FDFAF8] p-2"
               >
                 <div className="relative h-14 w-12 shrink-0 overflow-hidden rounded-lg bg-[#F7F4F1]">
-                  {item.imageUrl && (
+                  {item.imageUrl ? (
                     <Image
                       src={item.imageUrl}
                       alt=""
@@ -440,6 +443,11 @@ export function PdvClient({
                       sizes="48px"
                       className="object-contain"
                       unoptimized
+                    />
+                  ) : (
+                    <span
+                      className="block h-full w-full"
+                      style={{ backgroundColor: item.swatchHex }}
                     />
                   )}
                 </div>
