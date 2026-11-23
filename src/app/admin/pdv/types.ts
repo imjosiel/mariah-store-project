@@ -1,3 +1,5 @@
+export type Payment = "PIX" | "DINHEIRO" | "CARTAO" | "OUTRO";
+
 export interface PdvVariant {
   id: string;
   colorName: string;
@@ -18,6 +20,8 @@ export interface PdvProduct {
 
 export interface CartItem {
   key: string;
+  listPriceInCents: number;
+  available: number;
   variantId: string;
   sizeLabel: string;
   productName: string;
@@ -31,6 +35,7 @@ export interface CartItem {
 
 export interface AddToCartItem {
   productName: string;
+  listPriceInCents: number;
   variantId: string;
   sizeLabel: string;
   colorName: string;

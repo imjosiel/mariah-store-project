@@ -10,11 +10,9 @@ import type { AddToCartItem, PdvProduct } from "./types";
 export function PdvProductCard({
   product,
   onAdd,
-  onSelect,
 }: {
   product: PdvProduct;
   onAdd: (item: AddToCartItem) => void;
-  onSelect: (product: PdvProduct, variantId: string, sizeLabel: string) => void;
 }) {
   const [variantId, setVariantId] = useState(product.variants[0]?.id ?? "");
   const [sizeLabel, setSizeLabel] = useState("");
@@ -30,6 +28,7 @@ export function PdvProductCard({
     if (!stock || stock.stock < 1) return;
     onAdd({
       productName: product.name,
+      listPriceInCents: product.priceInCents,
       variantId: variant.id,
       sizeLabel,
       colorName: variant.colorName,
@@ -46,12 +45,7 @@ export function PdvProductCard({
 
   return (
     <div className="rounded-2xl border border-[#EDE3D8] bg-[#FDFAF8] p-3">
-      <button
-        type="button"
-        onClick={() => onSelect(product, variantId, sizeLabel)}
-        title="Editar valor e quantidade antes de adicionar"
-        className="w-full cursor-pointer text-left"
-      >
+      <div>
         <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-[#F7F4F1]">
           {photo ? (
             <Image
@@ -74,7 +68,7 @@ export function PdvProductCard({
         <p className="tabular-price text-[11px] text-[#6E6660]">
           {formatBRL(product.priceInCents)}
         </p>
-      </button>
+      </div>
 
       <div className="mt-3">
         <div className="flex items-center justify-between gap-2">
