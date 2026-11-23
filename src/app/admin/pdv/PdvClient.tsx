@@ -10,34 +10,8 @@ import { calculateCommission } from "@/domain/commission";
 import { createPosOrderAction } from "@/order-actions";
 import { PANEL } from "@/components/admin/AdminShell";
 
-type Product = {
-  slug: string;
-  name: string;
-  categoryName: string;
-  imageUrl: string;
-  priceInCents: number;
-  costInCents: number;
-  variants: Array<{
-    id: string;
-    colorName: string;
-    swatchHex: string;
-    imageUrl: string;
-    stocks: Array<{ sizeLabel: string; stock: number }>;
-  }>;
-};
-
-type CartItem = {
-  key: string;
-  variantId: string;
-  sizeLabel: string;
-  productName: string;
-  colorName: string;
-  swatchHex: string;
-  imageUrl: string;
-  unitPriceInCents: number;
-  unitCostInCents: number;
-  quantity: number;
-};
+import { PdvProductCard } from "./PdvProductCard";
+import type { AddToCartItem, CartItem, PdvProduct } from "./types";
 
 type Payment = "PIX" | "DINHEIRO" | "CARTAO" | "OUTRO";
 
@@ -56,7 +30,7 @@ export function PdvClient({
   products,
   commissionBps,
 }: {
-  products: Product[];
+  products: PdvProduct[];
   commissionBps: number;
 }) {
   const [productSlug, setProductSlug] = useState("");
@@ -124,47 +98,61 @@ export function PdvClient({
     return !term || item.name.toLowerCase().includes(term);
   });
 
-  const selectProduct = (slug: string) => {
-    const next = products.find((item) => item.slug === slug);
-    setProductSlug(slug);
-    setVariantId("");
-    setSizeLabel("");
+  const selectProduct = (product: PdvProduct, variantId: string, sizeLabel: string) => {
+    setProductSlug(product.slug);
+    setVariantId(variantId);
+    setSizeLabel(sizeLabel);
     setQuantity("1");
-    setUnitPrice(next ? centsToInput(next.priceInCents) : "");
+    setUnitPrice(centsToInput(product.priceInCents));
+    setMessage("");
+    setLastCode("");
+  };
+
+  const addItemToCart = (item: AddToCartItem) => {
+    const key = `${item.variantId}:${item.sizeLabel}:${item.unitPriceInCents}`;
+    const existing = cart.find((entry) => entry.key === key);
+    const nextQty = (existing?.quantity ?? 0) + item.quantity;
+    if (nextQty > item.available) {
+      setMessage(`Só há ${item.available} disponível(is) desse item.`);
+      return;
+    }
+    setCart((prev) =>
+      existing
+        ? prev.map((entry) => (entry.key === key ? { ...entry, quantity: nextQty } : entry))
+        : [
+            ...prev,
+            {
+              key,
+              variantId: item.variantId,
+              sizeLabel: item.sizeLabel,
+              productName: item.productName,
+              colorName: item.colorName,
+              swatchHex: item.swatchHex,
+              imageUrl: item.imageUrl,
+              unitPriceInCents: item.unitPriceInCents,
+              unitCostInCents: item.unitCostInCents,
+              quantity: item.quantity,
+            },
+          ]
+    );
     setMessage("");
     setLastCode("");
   };
 
   const addToCart = () => {
     if (invalid || !variant || !product || unitPriceInCents === null) return;
-    const key = `${variant.id}:${sizeLabel}:${unitPriceInCents}`;
-    const existing = cart.find((item) => item.key === key);
-    const nextQty = (existing?.quantity ?? 0) + qty;
-    if (nextQty > available) {
-      setMessage(`Só há ${available} disponível(is) desse item.`);
-      return;
-    }
-    setCart((prev) =>
-      existing
-        ? prev.map((item) => (item.key === key ? { ...item, quantity: nextQty } : item))
-        : [
-            ...prev,
-            {
-              key,
-              variantId: variant.id,
-              sizeLabel,
-              productName: product.name,
-              colorName: variant.colorName,
-              swatchHex: variant.swatchHex,
-              imageUrl: variant.imageUrl,
-              unitPriceInCents,
-              unitCostInCents: product.costInCents,
-              quantity: qty,
-            },
-          ]
-    );
-    setMessage("");
-    setLastCode("");
+    addItemToCart({
+      productName: product.name,
+      variantId: variant.id,
+      sizeLabel,
+      colorName: variant.colorName,
+      swatchHex: variant.swatchHex,
+      imageUrl: variant.imageUrl,
+      unitPriceInCents,
+      unitCostInCents: product.costInCents,
+      available,
+      quantity: qty,
+    });
     setVariantId("");
     setSizeLabel("");
     setQuantity("1");
@@ -511,43 +499,14 @@ export function PdvClient({
           <p className="mt-5 text-center text-sm text-[#6E6660]">Nenhuma peça encontrada.</p>
         ) : (
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {filtered.map((item) => {
-              const selected = item.slug === productSlug;
-              return (
-                <button
-                  key={item.slug}
-                  type="button"
-                  onClick={() => selectProduct(item.slug)}
-                  aria-pressed={selected}
-                  className={`cursor-pointer rounded-2xl border p-3 text-left transition-colors ${
-                    selected
-                      ? "border-[#C0563E] bg-[#C0563E]/5 ring-2 ring-[#C0563E]/30"
-                      : "border-[#EDE3D8] bg-[#FDFAF8] hover:border-rosegold"
-                  }`}
-                >
-                  <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-[#F7F4F1]">
-                    {item.imageUrl ? (
-                      <Image
-                        src={item.imageUrl}
-                        alt=""
-                        fill
-                        sizes="(max-width: 640px) 40vw, 200px"
-                        className="object-contain"
-                        unoptimized
-                      />
-                    ) : (
-                      <span className="flex h-full items-center justify-center text-[10px] text-[#9A918B]">
-                        sem foto
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-2 truncate text-xs font-semibold text-[#141210]">{item.name}</p>
-                  <p className="tabular-price text-[11px] text-[#6E6660]">
-                    {formatBRL(item.priceInCents)}
-                  </p>
-                </button>
-              );
-            })}
+            {filtered.map((item) => (
+              <PdvProductCard
+                key={item.slug}
+                product={item}
+                onAdd={addItemToCart}
+                onSelect={selectProduct}
+              />
+            ))}
           </div>
         )}
       </div>
