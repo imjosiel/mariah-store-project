@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   HardDrive,
   LayoutDashboard,
   ListFilter,
+  Menu,
   Package,
   ShoppingBag,
   ShoppingCart,
@@ -14,6 +15,7 @@ import {
   UserPlus,
   Users,
   Wallet,
+  X,
 } from "lucide-react";
 
 import { signOutFromAdmin } from "@/auth-actions";
@@ -50,6 +52,7 @@ export function AdminShell({
 }) {
   const pathname = usePathname();
   const links = visibleAdminLinks(LINKS, isSuperAdmin);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     void preloadCutout();
@@ -67,6 +70,76 @@ export function AdminShell({
       />
 
       <div className="relative flex min-h-screen">
+        {menuOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <button
+              type="button"
+              aria-label="Fechar menu"
+              onClick={() => setMenuOpen(false)}
+              className="absolute inset-0 h-full w-full cursor-default bg-[#1A1512]/40 backdrop-blur-[2px]"
+            />
+            <div className={`${PANEL} absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col p-5`}>
+              <div className="flex items-start justify-between border-b border-[#EDE3D8] pb-5">
+                <div>
+                  <p className="font-serif text-2xl font-semibold leading-none">Maria&apos;s</p>
+                  <p className="mt-1 font-serif text-xs tracking-[0.22em] text-copper uppercase">
+                    Store
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen(false)}
+                  aria-label="Fechar menu"
+                  className="cursor-pointer rounded-full border border-[#E4DED8] p-2 text-[#4A4440]"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <nav className="mt-6 space-y-1" aria-label="Navegação administrativa">
+                {links.map(({ href, label, icon: Icon }) => {
+                  const active = pathname === href;
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setMenuOpen(false)}
+                      aria-current={active ? "page" : undefined}
+                      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs transition-colors ${
+                        active
+                          ? "bg-[#161311] font-semibold text-cream"
+                          : "font-medium text-[#4A4440] hover:bg-sand/60 hover:text-[#141210]"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" strokeWidth={1.8} />
+                      {label}
+                    </Link>
+                  );
+                })}
+                <Link
+                  href="/"
+                  onClick={() => setMenuOpen(false)}
+                  className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-[#4A4440] hover:bg-sand/60"
+                >
+                  <Store className="h-4 w-4" strokeWidth={1.8} />
+                  Ver loja
+                </Link>
+              </nav>
+
+              <div className="mt-auto">
+                <form action={signOutFromAdmin}>
+                  <button
+                    type="submit"
+                    className="w-full cursor-pointer rounded-xl border border-[#E4DED8] px-3 py-2 text-[11px] font-semibold text-[#4A4440]"
+                  >
+                    Sair da conta
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
         <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col p-4 lg:flex">
           <div className={`${PANEL} flex h-full flex-col p-5`}>
             <div className="border-b border-[#EDE3D8] pb-5">
@@ -118,6 +191,18 @@ export function AdminShell({
         </aside>
 
         <main className="min-w-0 flex-1 px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
+          <div className="mb-4 flex items-center justify-between lg:hidden">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-label="Abrir menu"
+              className={`${PANEL} inline-flex cursor-pointer items-center gap-2 px-4 py-2 text-xs font-semibold text-[#141210]`}
+            >
+              <Menu className="h-4 w-4" />
+              Menu
+            </button>
+            <span className="font-serif text-lg font-semibold text-[#141210]">Maria&apos;s Store</span>
+          </div>
           {children}
         </main>
       </div>
