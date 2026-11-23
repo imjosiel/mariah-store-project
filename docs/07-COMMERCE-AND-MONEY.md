@@ -31,17 +31,36 @@ Exemplo normativo: custo R$ 50,00 + margem R$ 50,00 → venda R$ 100,00 → comi
 
 Se a peça for vendida com desconto a ponto de `margem <= 0`, a comissão é `0` — nunca negativa.
 
-## 3. Contrato (ainda a escrever — bloqueante)
+## 3. Minuta de contrato de comissão
 
-Antes de codificar `commissionStatus`, sentar e escrever uma página com:
+> Resumo das regras já implementadas no sistema. **Não substitui orientação jurídica ou contábil.**
+> Preencher os campos em branco, revisar com contador e assinar antes de operar com valores reais.
 
-1. A fórmula do §2.
-2. **Quando nasce** o direito à comissão (na confirmação do pedido no admin).
-3. **Quando é paga** (após o prazo de arrependimento, §4).
-4. **O que acontece em devolução/cancelamento** (§4).
-5. Forma de repasse: Pix com recibo, enquanto não houver enquadramento do desenvolvedor. Validação posterior com contador — o dev também precisa de enquadramento para emitir recibo/NF de serviço.
+**1. Objeto.** O desenvolvedor mantém a plataforma da loja e recebe, por peça vendida online, um percentual da margem bruta definido no painel (`CommissionSetting.commissionBps`, padrão 10%).
 
-> Este é o único item "humano" bloqueante. O código pode ser escrito com os valores acima enquanto o papel é formalizado.
+**2. Fórmula.** `comissão = arredondar((valor efetivamente recebido − custo do SKU) × alíquota / 10.000)`. Taxas de gateway, frete, nota fiscal e impostos **não** entram na base. Se a margem for menor ou igual a zero, a comissão é zero.
+
+**3. Nascimento do direito.** Na confirmação do pedido (clique no admin) ou no recebimento da cobrança pelo gateway, o que ocorrer primeiro. O valor e o custo ficam congelados no `OrderItem`.
+
+**4. Prazo e liberação.** Para venda fora do estabelecimento vale o prazo de arrependimento do CDC (§4). Para venda presencial o prazo é configurável pelo super admin. Com o gateway ativo, `PAYMENT_SPLIT_DONE` marca a comissão como paga; sem gateway, o super admin marca manualmente.
+
+**5. Cancelamento e devolução.** Cancelamento dentro do prazo reverte a comissão. Depois de paga, não se reverte. Troca/devolução por cortesia é registrada caso a caso (`PostSaleEvent`), sem prazo automático.
+
+**6. Repasse.** Enquanto não houver enquadramento do desenvolvedor: Pix com recibo, após a liberação. Com gateway ativo: split automático via `fixedValue` na carteira do desenvolvedor (`walletId`). O custo do gateway é da loja.
+
+**7. Obrigações fiscais.** Cada parte responde por seu próprio enquadramento. A loja cuida da NF de venda; o desenvolvedor deve emitir recibo ou NFS-e de serviço conforme seu enquadramento. Validar com contador.
+
+**8. Vigência e revisão.** Vige enquanto o sistema estiver em operação. Qualquer mudança de alíquota ou prazo é feita no painel pelo super admin e vale para pedidos novos.
+
+### Campos pendentes de preenchimento
+
+- Contratante (loja): Razão social / CPF-CNPJ / endereço — **a preencher**.
+- Contratado (desenvolvedor): Nome / CPF-CNPJ / endereço — **a preencher**.
+- Enquadramento do desenvolvedor (PF com recibo, MEI ou outro) — **a definir com contador**.
+- Conta para repasse (chave Pix / walletId de produção) — **a configurar**.
+- Data de assinatura e assinaturas — **pendente**.
+
+> Este era o único item humano bloqueante. O código já segue todas as regras acima; falta apenas formalizar o papel.
 
 ## 4. Prazo de arrependimento (CDC art. 49)
 
