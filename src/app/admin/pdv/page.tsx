@@ -15,6 +15,7 @@ export default async function PdvPage() {
         .map((product) => ({
           slug: product.slug,
           name: product.name,
+          imageUrl: product.imageUrl,
           priceInCents: product.priceInCents,
           costInCents: product.costInCents,
           variants: product.variants.map((variant) => ({

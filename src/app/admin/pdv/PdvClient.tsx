@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ShoppingBag } from "lucide-react";
+import Image from "next/image";
+import { Check, Search, ShoppingBag } from "lucide-react";
 
 import { formatBRL } from "@/lib/money";
 import { reaisToCents } from "@/domain/money";
@@ -12,6 +13,7 @@ import { PANEL } from "@/components/admin/AdminShell";
 type Product = {
   slug: string;
   name: string;
+  imageUrl: string;
   priceInCents: number;
   costInCents: number;
   variants: Array<{
@@ -37,6 +39,7 @@ const input =
 
 export function PdvClient({ products }: { products: Product[] }) {
   const [productSlug, setProductSlug] = useState("");
+  const [query, setQuery] = useState("");
   const [variantId, setVariantId] = useState("");
   const [sizeLabel, setSizeLabel] = useState("");
   const [quantity, setQuantity] = useState("1");
@@ -73,6 +76,22 @@ export function PdvClient({ products }: { products: Product[] }) {
     qty > available ||
     unitPriceInCents === null ||
     unitPriceInCents <= 0;
+
+  const term = query.trim().toLowerCase();
+  const filtered = term
+    ? products.filter((item) => item.name.toLowerCase().includes(term))
+    : products;
+
+  const selectProduct = (slug: string) => {
+    const next = products.find((item) => item.slug === slug);
+    setProductSlug(slug);
+    setVariantId("");
+    setSizeLabel("");
+    setQuantity("1");
+    setUnitPrice(next ? centsToInput(next.priceInCents) : "");
+    setMessage("");
+    setLastCode("");
+  };
 
   const submit = async () => {
     if (invalid || !variant) return;
@@ -114,32 +133,14 @@ export function PdvClient({ products }: { products: Product[] }) {
 
       <div className={`${PANEL} p-5 sm:p-6`}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block sm:col-span-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#EDE3D8] bg-[#FDFAF8] px-3 py-2 sm:col-span-2">
             <span className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
-              Peça
+              Peça selecionada
             </span>
-            <select
-              value={productSlug}
-              onChange={(event) => {
-                const slug = event.target.value;
-                const next = products.find((item) => item.slug === slug);
-                setProductSlug(slug);
-                setVariantId("");
-                setSizeLabel("");
-                setQuantity("1");
-                setUnitPrice(next ? centsToInput(next.priceInCents) : "");
-                setMessage("");
-              }}
-              className={input}
-            >
-              <option value="">Selecione a peça</option>
-              {products.map((item) => (
-                <option key={item.slug} value={item.slug}>
-                  {item.name} · {formatBRL(item.priceInCents)}
-                </option>
-              ))}
-            </select>
-          </label>
+            <span className="text-xs font-semibold text-[#141210]">
+              {product ? product.name : "Escolha uma peça na grade abaixo"}
+            </span>
+          </div>
 
           <label className="block">
             <span className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
@@ -304,6 +305,68 @@ export function PdvClient({ products }: { products: Product[] }) {
           <p className="mt-3 text-[11px] text-[#A8432F]">
             Cadastre uma peça antes de registrar vendas.
           </p>
+        )}
+      </div>
+
+      <div className={`${PANEL} p-5 sm:p-6`}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-serif text-xl font-semibold">Escolha a peça</h2>
+            <p className="mt-0.5 text-[11px] text-[#6E6660]">Toque na peça para selecioná-la.</p>
+          </div>
+          <label className="flex items-center gap-2 rounded-xl border border-[#E4DED8] bg-white px-3 py-2">
+            <Search className="h-4 w-4 text-[#6E6660]" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar peça"
+              className="w-40 bg-transparent text-sm text-[#141210] outline-none placeholder:text-[#9A918B]"
+            />
+          </label>
+        </div>
+
+        {filtered.length === 0 ? (
+          <p className="mt-5 text-center text-sm text-[#6E6660]">Nenhuma peça encontrada.</p>
+        ) : (
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {filtered.map((item) => {
+              const selected = item.slug === productSlug;
+              return (
+                <button
+                  key={item.slug}
+                  type="button"
+                  onClick={() => selectProduct(item.slug)}
+                  aria-pressed={selected}
+                  className={`cursor-pointer rounded-2xl border p-3 text-left transition-colors ${
+                    selected
+                      ? "border-[#C0563E] bg-[#C0563E]/5 ring-2 ring-[#C0563E]/30"
+                      : "border-[#EDE3D8] bg-[#FDFAF8] hover:border-rosegold"
+                  }`}
+                >
+                  <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-[#F7F4F1]">
+                    {item.imageUrl ? (
+                      <Image
+                        src={item.imageUrl}
+                        alt=""
+                        fill
+                        sizes="(max-width: 640px) 40vw, 200px"
+                        className="object-contain"
+                        unoptimized
+                      />
+                    ) : (
+                      <span className="flex h-full items-center justify-center text-[10px] text-[#9A918B]">
+                        sem foto
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-2 truncate text-xs font-semibold text-[#141210]">{item.name}</p>
+                  <p className="tabular-price text-[11px] text-[#6E6660]">
+                    {formatBRL(item.priceInCents)}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
