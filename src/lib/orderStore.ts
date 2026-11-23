@@ -145,7 +145,8 @@ function toView(
     commissionAvailableAt: order.commissionAvailableAt?.toISOString() ?? null,
     stockShortfalls: order.stockShortfalls,
     items: order.items.map((item) => ({
-      key: `${item.productId}:${item.variantId}:${item.sizeLabel}`,
+      // OrderItem.id é único mesmo quando o pedido tem unidades repetidas.
+      key: item.id,
       productName: item.productName,
       colorName: item.colorName,
       sizeLabel: item.sizeLabel,
