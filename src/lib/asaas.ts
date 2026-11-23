@@ -67,6 +67,7 @@ export interface CreatePixChargeInput {
   commissionInCents: number;
   customerName: string;
   customerCpfCnpj: string;
+  asaasCustomerId?: string | null;
   customerPhone?: string;
   description?: string;
 }
@@ -90,26 +91,30 @@ export interface PixQrCode {
 
 export async function createPixCharge(
   input: CreatePixChargeInput
-): Promise<{ paymentId: string; qrCode: PixQrCode }> {
+): Promise<{ paymentId: string; qrCode: PixQrCode; asaasCustomerId: string }> {
   const { walletId } = config();
   const phone = input.customerPhone?.replace(/\D/g, "") || undefined;
   const cpfCnpj = input.customerCpfCnpj.replace(/\D/g, "");
   if (!cpfCnpj) throw new AsaasError("CPF/CNPJ do cliente é obrigatório.");
 
-  const customer = await request<AsaasCustomer>("/customers", {
-    method: "POST",
-    body: JSON.stringify({
-      name: input.customerName.trim() || "Cliente Maria's Store",
-      cpfCnpj,
-      ...(phone ? { mobilePhone: phone, phone } : {}),
-      notificationEnabled: false,
-    }),
-  });
+  const asaasCustomerId =
+    input.asaasCustomerId?.trim() ||
+    (
+      await request<AsaasCustomer>("/customers", {
+        method: "POST",
+        body: JSON.stringify({
+          name: input.customerName.trim() || "Cliente Maria's Store",
+          cpfCnpj,
+          ...(phone ? { mobilePhone: phone, phone } : {}),
+          notificationEnabled: false,
+        }),
+      })
+    ).id;
 
   const payment = await request<AsaasPayment>("/payments", {
     method: "POST",
     body: JSON.stringify({
-      customer: customer.id,
+      customer: asaasCustomerId,
       billingType: "PIX",
       value: input.amountInCents / 100,
       dueDate: new Date().toISOString().slice(0, 10),
@@ -127,7 +132,7 @@ export async function createPixCharge(
   });
 
   const qrCode = await getPixQrCode(payment.id);
-  return { paymentId: payment.id, qrCode };
+  return { paymentId: payment.id, qrCode, asaasCustomerId };
 }
 
 export async function getPixQrCode(paymentId: string): Promise<PixQrCode> {

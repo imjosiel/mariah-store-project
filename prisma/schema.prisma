@@ -81,6 +81,20 @@ model VariantStock {
   @@unique([variantId, sizeLabel])
 }
 
+model Customer {
+  id              String   @id @default(cuid())
+  name            String
+  /** Somente dígitos — identifica a pessoa sem expor o documento na interface. */
+  cpfCnpj         String   @unique
+  phone           String?
+  email           String?
+  /** Reaproveita o cliente no Asaas em vez de criar um novo a cada cobrança. */
+  asaasCustomerId String?  @unique
+  orders          Order[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
 model StorageSetting {
   id         String   @id @default(cuid())
   limitBytes Int      @default(1073741824) // 1 GB por loja
@@ -180,6 +194,8 @@ enum CommissionStatus {
 model Order {
   id                     String           @id @default(cuid())
   code                   String           @unique // MS-xxxx gerado na criação, nunca derivado do subtotal
+  customerId             String?
+  customer               Customer?       @relation(fields: [customerId], references: [id])
   customerName           String?
   customerPhone          String?
   notes                  String?

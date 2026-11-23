@@ -47,6 +47,12 @@ npm run verify
 
 Detalhes de implementação **não aparecem na tela** — ficam apenas neste documento e no `docs/07`. A interface fala de peça, cor, tamanho e preço; não menciona R2, upload, modelo de IA, "regra de ouro" nem prazos de comissão. Isso evita vazar arquitetura para quem usa o ERP e evita textos desatualizados quando a infra muda.
 - Cota por loja em `StorageSetting` (padrão **1 GB**), ajustável pelo super admin em `/admin/armazenamento`. O upload soma os tamanhos dos objetos via `ListObjectsV2` e bloqueia se estourar o limite. As 11 imagens antigas em `public/products/` seguem como fallback.
+- **Clientes (migration `20261123192629_customers`):** `Customer` guarda nome, CPF/CNPJ (somente
+  dígitos, `@unique`), telefone, e-mail e `asaasCustomerId`. `Order.customerId` é opcional para
+  não quebrar pedidos antigos. `findOrCreateCustomer` evita duplicatas no Asaas; a interface
+  `/admin/clientes` mostra o documento **mascarado** (`maskDocument`), nunca completo. CPF é dado
+  pessoal sensível (LGPD): não aparece em log nem em relatório, e a política em `/politicas` deve
+  cobrir esse tratamento.
 - **Checkout/Asaas:** `CheckoutSetting` (singleton, migration `20261123171622_checkout_settings`)
   guarda `pixGatewayEnabled` (default `false`), `whatsappEnabled` (default `true`) e
   `preferredMethod` (default `WHATSAPP`). `Order.gatewayPaymentId` guarda a cobrança. Cliente em

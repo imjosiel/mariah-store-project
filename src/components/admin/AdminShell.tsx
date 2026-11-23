@@ -12,6 +12,7 @@ import {
   ShoppingCart,
   Store,
   UserPlus,
+  Users,
   Wallet,
 } from "lucide-react";
 
@@ -32,6 +33,7 @@ const LINKS = [
   { href: "/admin", label: "Visão geral", icon: LayoutDashboard },
   { href: "/admin/pdv", label: "Venda na loja", icon: ShoppingCart },
   { href: "/admin/pedidos", label: "Pedidos", icon: ShoppingBag },
+  { href: "/admin/clientes", label: "Clientes", icon: Users },
   { href: "/admin/financeiro", label: "Financeiro", icon: Wallet },
   { href: "/admin/produtos", label: "Produtos", icon: Package },
   { href: "/admin/categorias", label: "Categorias", icon: ListFilter },

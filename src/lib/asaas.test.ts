@@ -48,6 +48,27 @@ describe("cliente Asaas", () => {
     expect(qr[0]).toBe("https://api-sandbox.asaas.com/v3/payments/pay_1/pixQrCode");
   });
 
+  it("reaproveita cliente existente no Asaas", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock
+      .mockResolvedValueOnce(resposta({ id: "pay_2", value: 100, status: "PENDING" }))
+      .mockResolvedValueOnce(resposta({ encodedImage: "abc", payload: "000201" }));
+
+    const result = await createPixCharge({
+      orderCode: "MS-5678",
+      amountInCents: 10000,
+      commissionInCents: 1000,
+      customerName: "Ana Clara",
+      customerCpfCnpj: "52998224725",
+      asaasCustomerId: "cus_existente",
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2); // não cria cliente de novo
+    expect(result.asaasCustomerId).toBe("cus_existente");
+    const cobranca = JSON.parse(fetchMock.mock.calls[0][1]?.body as string);
+    expect(cobranca.customer).toBe("cus_existente");
+  });
+
   it("exige CPF/CNPJ antes de chamar a API", async () => {
     await expect(
       createPixCharge({

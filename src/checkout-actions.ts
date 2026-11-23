@@ -14,6 +14,11 @@ import {
   type CheckoutSettings,
 } from "@/lib/checkoutSettings";
 import { getCommissionSettings } from "@/lib/commissionSettings";
+import {
+  findOrCreateCustomer,
+  setAsaasCustomerId,
+  setOrderCustomer,
+} from "@/lib/customerStore";
 import { setGatewayPayment } from "@/lib/orderStore";
 import { prisma } from "@/lib/prisma";
 
@@ -57,17 +62,27 @@ export async function createPixChargeAction(input: {
           commissionBps: commissionBpsOr(settings),
         });
 
+  const cliente = await findOrCreateCustomer({
+    name: input.customerName,
+    cpfCnpj: input.customerCpfCnpj,
+  });
+
   const result = await createPixCharge({
     orderCode: order.code,
     amountInCents: order.totalInCents,
     commissionInCents,
     customerName: input.customerName,
     customerCpfCnpj: input.customerCpfCnpj,
+    asaasCustomerId: cliente.asaasCustomerId,
     description: `Pedido ${order.code}`,
   });
 
-  await setGatewayPayment(order.code, result.paymentId, commissionInCents);
-  return result;
+  await Promise.all([
+    setGatewayPayment(order.code, result.paymentId, commissionInCents),
+    setAsaasCustomerId(cliente.id, result.asaasCustomerId),
+    setOrderCustomer(order.code, cliente.id),
+  ]);
+  return { paymentId: result.paymentId, qrCode: result.qrCode };
 }
 
 export async function updateCheckoutSettingsAction(
