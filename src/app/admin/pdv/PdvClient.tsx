@@ -4,6 +4,11 @@ import { useState } from "react";
 import { Search } from "lucide-react";
 
 import { calculateCommission } from "@/domain/commission";
+import {
+  allocateDiscount,
+  effectiveUnitPrice,
+  type DiscountMode,
+} from "@/domain/discount";
 import { reaisToCents } from "@/domain/money";
 import { createPosOrderAction } from "@/order-actions";
 import { PANEL } from "@/components/admin/AdminShell";
@@ -21,6 +26,8 @@ export function PdvClient({
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [orderDiscountMode, setOrderDiscountMode] = useState<DiscountMode>("BRL");
+  const [orderDiscountValue, setOrderDiscountValue] = useState("0");
   const [payment, setPayment] = useState<Payment>("PIX");
   const [customerName, setCustomerName] = useState("");
   const [message, setMessage] = useState("");
@@ -37,59 +44,60 @@ export function PdvClient({
   });
 
   const addItemToCart = (item: AddToCartItem) => {
-    const key = `${item.variantId}:${item.sizeLabel}:${item.unitPriceInCents}`;
-    const existing = cart.find((entry) => entry.key === key);
-    const nextQty = (existing?.quantity ?? 0) + item.quantity;
-    if (nextQty > item.available) {
+    const groupKey = `${item.variantId}:${item.sizeLabel}:${item.unitPriceInCents}`;
+    const units = cart.filter((entry) => entry.groupKey === groupKey).length;
+    if (units >= item.available) {
       setMessage(`Só há ${item.available} disponível(is) desse item.`);
       return;
     }
-    setCart((prev) =>
-      existing
-        ? prev.map((entry) => (entry.key === key ? { ...entry, quantity: nextQty } : entry))
-        : [
-            ...prev,
-            {
-              key,
-              listPriceInCents: item.listPriceInCents,
-              available: item.available,
-              variantId: item.variantId,
-              sizeLabel: item.sizeLabel,
-              productName: item.productName,
-              colorName: item.colorName,
-              swatchHex: item.swatchHex,
-              imageUrl: item.imageUrl,
-              unitPriceInCents: item.unitPriceInCents,
-              unitCostInCents: item.unitCostInCents,
-              quantity: item.quantity,
-            },
-          ]
-    );
+    setCart((prev) => [
+      ...prev,
+      {
+        key: crypto.randomUUID(),
+        groupKey,
+        listPriceInCents: item.listPriceInCents,
+        available: item.available,
+        variantId: item.variantId,
+        sizeLabel: item.sizeLabel,
+        productName: item.productName,
+        colorName: item.colorName,
+        swatchHex: item.swatchHex,
+        imageUrl: item.imageUrl,
+        unitPriceInCents: item.unitPriceInCents,
+        unitCostInCents: item.unitCostInCents,
+        quantity: 1,
+        pieceDiscountMode: "BRL",
+        pieceDiscountValue: 0,
+      },
+    ]);
     setMessage("");
     setLastCode("");
   };
 
-  const updateQty = (key: string, delta: number) => {
+  const parseDiscountValue = (value: string): number => {
+    const parsed = value.trim() ? reaisToCents(value.replace("%", "").trim()) : 0;
+    return parsed === null || parsed < 0 ? 0 : parsed;
+  };
+
+  const updatePieceDiscount = (key: string, mode: DiscountMode, value: string) => {
+    const numeric = parseDiscountValue(value);
     setCart((prev) =>
-      prev.flatMap((item) => {
-        if (item.key !== key) return [item];
-        const next = item.quantity + delta;
-        if (next <= 0) return [];
-        if (next > item.available) {
-          setMessage(`Só há ${item.available} disponível(is) desse item.`);
-          return [item];
-        }
-        return [{ ...item, quantity: next }];
-      })
+      prev.map((item) =>
+        item.key === key
+          ? {
+              ...item,
+              pieceDiscountMode: mode,
+              pieceDiscountValue: numeric,
+              unitPriceInCents: effectiveUnitPrice(item.listPriceInCents, mode, numeric),
+            }
+          : item
+      )
     );
   };
 
-  const updatePrice = (key: string, value: string) => {
-    const cents = reaisToCents(value);
-    if (cents === null || cents < 0) return;
-    setCart((prev) =>
-      prev.map((item) => (item.key === key ? { ...item, unitPriceInCents: cents } : item))
-    );
+  const updateOrderDiscount = (mode: DiscountMode, value: string) => {
+    setOrderDiscountMode(mode);
+    setOrderDiscountValue(value);
   };
 
   const removeFromCart = (key: string) =>
@@ -99,10 +107,18 @@ export function PdvClient({
     (sum, item) => sum + item.listPriceInCents * item.quantity,
     0
   );
-  const receivedInCents = cart.reduce(
+  const beforeOrderDiscountInCents = cart.reduce(
     (sum, item) => sum + item.unitPriceInCents * item.quantity,
     0
   );
+  const orderDiscountValueParsed = parseDiscountValue(orderDiscountValue);
+  const orderDiscountInCents =
+    orderDiscountMode === "BRL"
+      ? Math.min(orderDiscountValueParsed, beforeOrderDiscountInCents)
+      : Math.round(
+          (beforeOrderDiscountInCents * Math.min(10000, orderDiscountValueParsed)) / 10000
+        );
+  const receivedInCents = Math.max(0, beforeOrderDiscountInCents - orderDiscountInCents);
   const costInCents = cart.reduce(
     (sum, item) => sum + item.unitCostInCents * item.quantity,
     0
@@ -125,12 +141,34 @@ export function PdvClient({
     setSaving(true);
     setMessage("");
     try {
+      const allocations = allocateDiscount(
+        cart.map((item) => ({
+          key: item.key,
+          grossInCents: item.unitPriceInCents * item.quantity,
+        })),
+        orderDiscountInCents
+      );
+      const units = cart.map((item) =>
+        Math.max(0, Math.round((allocations.get(item.key) ?? 0) / item.quantity))
+      );
+      const expectedTotal = Array.from(allocations.values()).reduce((sum, value) => sum + value, 0);
+      const sentTotal = units.reduce(
+        (sum, unit, index) => sum + unit * cart[index].quantity,
+        0
+      );
+      if (units.length > 0) {
+        units[units.length - 1] = Math.max(
+          0,
+          units[units.length - 1] + expectedTotal - sentTotal
+        );
+      }
+
       const result = await createPosOrderAction({
-        items: cart.map((item) => ({
+        items: cart.map((item, index) => ({
           variantId: item.variantId,
           sizeLabel: item.sizeLabel,
           quantity: item.quantity,
-          unitPriceInCents: item.unitPriceInCents,
+          unitPriceInCents: units[index],
         })),
         paymentMethod: payment,
         customerName,
@@ -139,6 +177,7 @@ export function PdvClient({
       setMessage(`Venda registrada como #${result.code}.`);
       setCart([]);
       setCustomerName("");
+      setOrderDiscountValue("0");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível registrar a venda.");
       setLastCode("");
@@ -224,10 +263,15 @@ export function PdvClient({
           message={message}
           lastCode={lastCode}
           saving={saving}
-          onQty={updateQty}
-          onPrice={updatePrice}
+          orderDiscountMode={orderDiscountMode}
+          orderDiscountValue={orderDiscountValue}
+          onPieceDiscount={updatePieceDiscount}
+          onOrderDiscount={updateOrderDiscount}
           onRemove={removeFromCart}
-          onClear={() => setCart([])}
+          onClear={() => {
+            setCart([]);
+            setOrderDiscountValue("0");
+          }}
           onPayment={setPayment}
           onCustomer={setCustomerName}
           onSubmit={() => void submit()}

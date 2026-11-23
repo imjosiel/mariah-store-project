@@ -1,3 +1,5 @@
+import type { DiscountMode } from "@/domain/discount";
+
 export type Payment = "PIX" | "DINHEIRO" | "CARTAO" | "OUTRO";
 
 export interface PdvVariant {
@@ -19,7 +21,10 @@ export interface PdvProduct {
 }
 
 export interface CartItem {
+  /** Identifica esta unidade específica no carrinho. */
   key: string;
+  /** Agrupa unidades iguais para conferir estoque. */
+  groupKey: string;
   listPriceInCents: number;
   available: number;
   variantId: string;
@@ -31,6 +36,9 @@ export interface CartItem {
   unitPriceInCents: number;
   unitCostInCents: number;
   quantity: number;
+  pieceDiscountMode: DiscountMode;
+  /** Centavos no modo BRL; centésimos de % no modo PCT. */
+  pieceDiscountValue: number;
 }
 
 export interface AddToCartItem {

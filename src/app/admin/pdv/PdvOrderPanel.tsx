@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { Check, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { Check, ShoppingBag, Trash2 } from "lucide-react";
 
 import { formatBRL } from "@/lib/money";
+import type { DiscountMode } from "@/domain/discount";
 import { PANEL } from "@/components/admin/AdminShell";
 import type { CartItem, Payment } from "./types";
 
@@ -13,6 +14,52 @@ const PAYMENT_LABEL: Record<Payment, string> = {
   CARTAO: "Cartão",
   OUTRO: "Outro",
 };
+
+const formatInputValue = (mode: DiscountMode, value: number) =>
+  (value / 100).toFixed(2).replace(".", ",");
+
+function DiscountInput({
+  mode,
+  value,
+  onMode,
+  onValue,
+  label,
+  compact = false,
+}: {
+  mode: DiscountMode;
+  value: string;
+  onMode: (mode: DiscountMode) => void;
+  onValue: (value: string) => void;
+  label: string;
+  compact?: boolean;
+}) {
+  const button = (active: boolean) =>
+    `cursor-pointer px-2 py-1 text-[10px] font-semibold ${
+      active ? "bg-[#161311] text-white" : "bg-white text-[#4A4440]"
+    }`;
+
+  return (
+    <div className="flex items-center gap-1">
+      <div className="flex shrink-0 overflow-hidden rounded-lg border border-[#E4DED8] bg-white">
+        <button type="button" onClick={() => onMode("BRL")} className={button(mode === "BRL")}>
+          R$
+        </button>
+        <button type="button" onClick={() => onMode("PCT")} className={button(mode === "PCT")}>
+          %
+        </button>
+      </div>
+      <input
+        value={value}
+        onChange={(event) => onValue(event.target.value)}
+        aria-label={label}
+        placeholder="0,00"
+        className={`tabular-price min-w-0 rounded-lg border border-[#E4DED8] bg-white text-right text-[11px] font-semibold text-[#141210] focus:border-rosegold ${
+          compact ? "w-14 px-1.5 py-1" : "w-20 px-2 py-2"
+        }`}
+      />
+    </div>
+  );
+}
 
 export interface PdvSummary {
   itemsInCents: number;
@@ -30,8 +77,10 @@ export function PdvOrderPanel({
   message,
   lastCode,
   saving,
-  onQty,
-  onPrice,
+  orderDiscountMode,
+  orderDiscountValue,
+  onPieceDiscount,
+  onOrderDiscount,
   onRemove,
   onClear,
   onPayment,
@@ -45,8 +94,10 @@ export function PdvOrderPanel({
   message: string;
   lastCode: string;
   saving: boolean;
-  onQty: (key: string, delta: number) => void;
-  onPrice: (key: string, value: string) => void;
+  orderDiscountMode: DiscountMode;
+  orderDiscountValue: string;
+  onPieceDiscount: (key: string, mode: DiscountMode, value: string) => void;
+  onOrderDiscount: (mode: DiscountMode, value: string) => void;
   onRemove: (key: string) => void;
   onClear: () => void;
   onPayment: (payment: Payment) => void;
@@ -111,42 +162,31 @@ export function PdvOrderPanel({
                   <p className="text-[10px] text-[#6E6660]">
                     {item.colorName} · Tam. {item.sizeLabel}
                   </p>
-                  <div className="mt-1.5 flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => onQty(item.key, -1)}
-                      aria-label={`Diminuir quantidade de ${item.productName}`}
-                      className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-[#E4DED8] bg-white text-[#4A4440] hover:border-rosegold"
-                    >
-                      <Minus className="h-3 w-3" />
-                    </button>
-                    <span className="tabular-price w-6 text-center text-xs font-semibold">
-                      {item.quantity}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => onQty(item.key, 1)}
-                      aria-label={`Aumentar quantidade de ${item.productName}`}
-                      className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-[#E4DED8] bg-white text-[#4A4440] hover:border-rosegold"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
+                  <div className="mt-1.5">
                     <button
                       type="button"
                       onClick={() => onRemove(item.key)}
                       aria-label={`Remover ${item.productName}`}
-                      className="ml-auto cursor-pointer rounded-full p-1 text-[#9A918B] hover:text-[#A8432F]"
+                      className="cursor-pointer rounded-full p-1 text-[#9A918B] hover:text-[#A8432F]"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
                 <div className="text-right">
-                  <input
-                    value={(item.unitPriceInCents / 100).toFixed(2).replace(".", ",")}
-                    onChange={(event) => onPrice(item.key, event.target.value)}
-                    aria-label={`Valor de ${item.productName}`}
-                    className="tabular-price w-16 rounded-lg border border-[#E4DED8] bg-white px-1.5 py-1 text-right text-[11px] font-semibold text-[#141210] focus:border-rosegold"
+                  <DiscountInput
+                    mode={item.pieceDiscountMode}
+                    value={formatInputValue(item.pieceDiscountMode, item.pieceDiscountValue)}
+                    onMode={(mode) =>
+                      onPieceDiscount(
+                        item.key,
+                        mode,
+                        formatInputValue(mode, item.pieceDiscountValue)
+                      )
+                    }
+                    onValue={(value) => onPieceDiscount(item.key, item.pieceDiscountMode, value)}
+                    label={`Desconto de ${item.productName}`}
+                    compact
                   />
                   <p className="tabular-price mt-1 text-[11px] font-semibold text-[#141210]">
                     {formatBRL(item.unitPriceInCents * item.quantity)}
@@ -159,6 +199,21 @@ export function PdvOrderPanel({
       </div>
 
       <div className="mt-4 space-y-3 border-t border-[#EDE3D8] pt-4">
+        <div>
+          <span className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
+            Desconto no pedido
+          </span>
+          <div className="mt-1.5">
+            <DiscountInput
+              mode={orderDiscountMode}
+              value={orderDiscountValue}
+              onMode={(mode) => onOrderDiscount(mode, orderDiscountValue)}
+              onValue={(value) => onOrderDiscount(orderDiscountMode, value)}
+              label="Desconto no pedido"
+            />
+          </div>
+        </div>
+
         <label className="block">
           <span className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
             Cliente (opcional)
