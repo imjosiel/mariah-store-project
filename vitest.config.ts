@@ -6,6 +6,9 @@ export default defineConfig(({ mode }) => {
   Object.assign(process.env, loadEnv(mode, process.cwd(), ""));
 
   return {
+    resolve: {
+      alias: { "@": process.cwd() },
+    },
     test: {
       include: ["src/**/*.test.ts"],
       testTimeout: 30_000,
