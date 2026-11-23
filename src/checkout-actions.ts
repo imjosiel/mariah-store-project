@@ -20,6 +20,7 @@ import { prisma } from "@/lib/prisma";
 export async function createPixChargeAction(input: {
   code: string;
   customerName: string;
+  customerCpfCnpj: string;
 }): Promise<{ paymentId: string; qrCode: PixQrCode }> {
   const checkout = await getCheckoutSettings();
   if (!checkout.pixGatewayEnabled || !gatewayIsConfigured()) {
@@ -61,6 +62,7 @@ export async function createPixChargeAction(input: {
     amountInCents: order.totalInCents,
     commissionInCents,
     customerName: input.customerName,
+    customerCpfCnpj: input.customerCpfCnpj,
     description: `Pedido ${order.code}`,
   });
 

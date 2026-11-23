@@ -66,6 +66,7 @@ export interface CreatePixChargeInput {
   amountInCents: number;
   commissionInCents: number;
   customerName: string;
+  customerCpfCnpj: string;
   customerPhone?: string;
   description?: string;
 }
@@ -92,11 +93,14 @@ export async function createPixCharge(
 ): Promise<{ paymentId: string; qrCode: PixQrCode }> {
   const { walletId } = config();
   const phone = input.customerPhone?.replace(/\D/g, "") || undefined;
+  const cpfCnpj = input.customerCpfCnpj.replace(/\D/g, "");
+  if (!cpfCnpj) throw new AsaasError("CPF/CNPJ do cliente é obrigatório.");
 
   const customer = await request<AsaasCustomer>("/customers", {
     method: "POST",
     body: JSON.stringify({
       name: input.customerName.trim() || "Cliente Maria's Store",
+      cpfCnpj,
       ...(phone ? { mobilePhone: phone, phone } : {}),
       notificationEnabled: false,
     }),
