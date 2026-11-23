@@ -8,7 +8,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   ShoppingBag,
-  Sparkles,
 } from "lucide-react";
 import { Product, ProductVariant } from "@/types/store";
 import { formatBRL } from "@/lib/money";
@@ -715,23 +714,6 @@ export function HeroOrbitalShowcase({
         </div>
       </div>
 
-      {/* Bottom Tagline Bar */}
-      <div className="relative z-20 mx-auto flex w-full max-w-[1380px] items-center justify-between px-5 pt-2 pb-6 text-xs sm:px-8 lg:px-12">
-        <div
-          className="flex items-center gap-2"
-          style={{ color: activeVariant.atmosphereMuted }}
-        >
-          <Sparkles className="h-3.5 w-3.5" strokeWidth={1.8} />
-          <span>Primeira troca grátis · Tecidos selecionados · Role o scroll sobre a peça para girar</span>
-        </div>
-
-        <a
-          href="#catalogo"
-          className="font-serif text-sm italic underline decoration-1 underline-offset-4 opacity-90 transition-opacity hover:opacity-100"
-        >
-          Explorar passarela &amp; grade completa ↓
-        </a>
-      </div>
     </section>
   );
 }

@@ -268,9 +268,6 @@ export function EditorialCatalog({
                 <h2 className="font-serif text-4xl font-semibold tracking-[-0.02em] text-espresso sm:text-5xl">
                   Curadoria Casual Feminina
                 </h2>
-                <p className="mt-1.5 text-sm text-mocha">
-                  Alterne entre o desfile em foco e a grade completa, ou troque os tons de cada peça ao vivo.
-                </p>
               </div>
             )}
 
