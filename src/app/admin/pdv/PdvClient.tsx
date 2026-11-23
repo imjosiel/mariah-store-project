@@ -19,9 +19,11 @@ import type { AddToCartItem, CartItem, Payment, PdvProduct } from "./types";
 export function PdvClient({
   products,
   commissionBps,
+  isSuperAdmin,
 }: {
   products: PdvProduct[];
   commissionBps: number;
+  isSuperAdmin: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -123,16 +125,28 @@ export function PdvClient({
     (sum, item) => sum + item.unitCostInCents * item.quantity,
     0
   );
+  const commissionInCents = calculateCommission({
+    costInCents,
+    receivedInCents,
+    commissionBps,
+  });
+  // Gateway, nota fiscal e impostos entram aqui quando existirem.
+  const breakdown = {
+    commissionInCents,
+    gatewayInCents: 0,
+    invoiceInCents: 0,
+    taxesInCents: 0,
+  };
   const summary: PdvSummary = {
     itemsInCents,
     discountInCents: Math.max(0, itemsInCents - receivedInCents),
     subtotalInCents: receivedInCents,
-    // Comissão hoje; gateway, nota fiscal e impostos entram aqui quando existirem.
-    feesInCents: calculateCommission({
-      costInCents,
-      receivedInCents,
-      commissionBps,
-    }),
+    feesInCents:
+      breakdown.commissionInCents +
+      breakdown.gatewayInCents +
+      breakdown.invoiceInCents +
+      breakdown.taxesInCents,
+    breakdown,
     totalInCents: receivedInCents,
   };
 
@@ -258,6 +272,7 @@ export function PdvClient({
         <PdvOrderPanel
           cart={cart}
           summary={summary}
+          isSuperAdmin={isSuperAdmin}
           payment={payment}
           customerName={customerName}
           message={message}

@@ -66,12 +66,19 @@ export interface PdvSummary {
   discountInCents: number;
   subtotalInCents: number;
   feesInCents: number;
+  breakdown: {
+    commissionInCents: number;
+    gatewayInCents: number;
+    invoiceInCents: number;
+    taxesInCents: number;
+  };
   totalInCents: number;
 }
 
 export function PdvOrderPanel({
   cart,
   summary,
+  isSuperAdmin,
   payment,
   customerName,
   message,
@@ -89,6 +96,7 @@ export function PdvOrderPanel({
 }: {
   cart: CartItem[];
   summary: PdvSummary;
+  isSuperAdmin: boolean;
   payment: Payment;
   customerName: string;
   message: string;
@@ -270,6 +278,32 @@ export function PdvOrderPanel({
             <dd className="tabular-price">{formatBRL(summary.totalInCents)}</dd>
           </div>
         </dl>
+
+        {isSuperAdmin && (
+          <details className="rounded-xl border border-[#E4DED8] bg-white px-3 py-2 text-[11px]">
+            <summary className="cursor-pointer font-semibold text-[#4A4440]">
+              Detalhar taxas
+            </summary>
+            <dl className="mt-2 space-y-1 text-[#6E6660]">
+              <div className="flex justify-between">
+                <dt>Comissão</dt>
+                <dd className="tabular-price">{formatBRL(summary.breakdown.commissionInCents)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt>Gateway</dt>
+                <dd className="tabular-price">{formatBRL(summary.breakdown.gatewayInCents)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt>Nota fiscal</dt>
+                <dd className="tabular-price">{formatBRL(summary.breakdown.invoiceInCents)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt>Impostos</dt>
+                <dd className="tabular-price">{formatBRL(summary.breakdown.taxesInCents)}</dd>
+              </div>
+            </dl>
+          </details>
+        )}
 
         {message && (
           <p

@@ -1,19 +1,25 @@
 // Lê o catálogo no banco no request — opt-out de prerender (Next 16).
 export const instant = false;
 
+import { auth } from "@/auth";
+import { canManageAdmins } from "@/domain/admin-access";
 import { getAdminProducts } from "@/lib/productStore";
 import { getCommissionSettings } from "@/lib/commissionSettings";
+import { getSuperAdminEmail } from "@/lib/adminStore";
 
 import { PdvClient } from "./PdvClient";
 
 export default async function PdvPage() {
-  const [products, settings] = await Promise.all([
+  const [products, settings, session, superAdminEmail] = await Promise.all([
     getAdminProducts(),
     getCommissionSettings(),
+    auth(),
+    getSuperAdminEmail(),
   ]);
 
   return (
     <PdvClient
+      isSuperAdmin={canManageAdmins(session?.user?.email, superAdminEmail)}
       commissionBps={settings.commissionBps}
       products={products
         .filter((product) => !product.archived)
