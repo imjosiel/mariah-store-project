@@ -6,8 +6,12 @@ export const instant = false;
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { canAccessAdmin } from "@/domain/admin-access";
-import { ensureFirstAdmin, getAdminEmails } from "@/lib/adminStore";
+import { canAccessAdmin, canManageAdmins } from "@/domain/admin-access";
+import {
+  ensureFirstAdmin,
+  getAdminEmails,
+  getSuperAdminEmail,
+} from "@/lib/adminStore";
 import { AdminShell } from "@/components/admin/AdminShell";
 
 /**
@@ -23,8 +27,15 @@ export default async function AdminLayout({
   if (!session?.user?.email) redirect("/login");
 
   await ensureFirstAdmin(session.user.email);
-  const admins = await getAdminEmails();
+  const [admins, superAdminEmail] = await Promise.all([
+    getAdminEmails(),
+    getSuperAdminEmail(),
+  ]);
   if (!canAccessAdmin(session.user.email, admins)) redirect("/sem-acesso");
 
-  return <AdminShell>{children}</AdminShell>;
+  return (
+    <AdminShell isSuperAdmin={canManageAdmins(session.user.email, superAdminEmail)}>
+      {children}
+    </AdminShell>
+  );
 }

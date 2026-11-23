@@ -17,6 +17,7 @@ import {
 
 import { signOutFromAdmin } from "@/auth-actions";
 import { preloadCutout } from "@/lib/cutout";
+import { visibleAdminLinks } from "./admin-links";
 
 /** Card com contraste maior: fundo quente do lado de fora, superfície branca por dentro. */
 export const PANEL =
@@ -38,8 +39,15 @@ const LINKS = [
   { href: "/admin/armazenamento", label: "Armazenamento", icon: HardDrive },
 ];
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+export function AdminShell({
+  children,
+  isSuperAdmin,
+}: {
+  children: React.ReactNode;
+  isSuperAdmin: boolean;
+}) {
   const pathname = usePathname();
+  const links = visibleAdminLinks(LINKS, isSuperAdmin);
 
   useEffect(() => {
     void preloadCutout();
@@ -67,7 +75,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <nav className="mt-6 space-y-1" aria-label="Navegação administrativa">
-              {LINKS.map(({ href, label, icon: Icon }) => {
+              {links.map(({ href, label, icon: Icon }) => {
                 const active = pathname === href;
                 return (
                   <Link
