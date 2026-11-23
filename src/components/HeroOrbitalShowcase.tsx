@@ -619,13 +619,6 @@ export function HeroOrbitalShowcase({
               </span>
             )}
           </div>
-          <p
-            className="tabular-price mt-1 text-xs"
-            style={{ color: activeVariant.atmosphereMuted }}
-          >
-            ou {formatBRL(Math.round(activeProduct.priceInCents * 0.95))} à vista no Pix
-          </p>
-
           {/* Color Swatches ("the swatch changes the picture" + atmosphere!) */}
           <div className="mt-6 flex flex-col items-start lg:items-end">
             <span

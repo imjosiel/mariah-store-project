@@ -35,6 +35,7 @@ export function BagDrawer({ checkout }: { checkout: CheckoutSettings }) {
   } = useBag();
 
   const [customerName, setCustomerName] = useState("");
+  const [customerDocument, setCustomerDocument] = useState("");
   const [copied, setCopied] = useState(false);
   const [pixQr, setPixQr] = useState<{ encodedImage: string; payload: string } | null>(null);
   const [pixLoading, setPixLoading] = useState(false);
@@ -52,6 +53,10 @@ export function BagDrawer({ checkout }: { checkout: CheckoutSettings }) {
   };
 
   const handlePix = async () => {
+    if (customerDocument.replace(/\D/g, "").length < 11) {
+      setPixError("Informe seu CPF ou CNPJ para gerar o Pix.");
+      return;
+    }
     setPixLoading(true);
     setPixError("");
     setPixQr(null);
@@ -60,6 +65,7 @@ export function BagDrawer({ checkout }: { checkout: CheckoutSettings }) {
       const result = await createPixChargeAction({
         code: getOrderCode(),
         customerName,
+        customerCpfCnpj: customerDocument,
       });
       setPixQr(result.qrCode);
     } catch (error) {
@@ -281,6 +287,25 @@ export function BagDrawer({ checkout }: { checkout: CheckoutSettings }) {
                     />
                   </div>
 
+                  {checkout.pixGatewayEnabled && (
+                    <div>
+                      <label
+                        htmlFor="bag-customer-document"
+                        className="block text-xs font-medium text-mocha"
+                      >
+                        CPF ou CNPJ (obrigatório para o Pix)
+                      </label>
+                      <input
+                        id="bag-customer-document"
+                        type="text"
+                        value={customerDocument}
+                        onChange={(e) => setCustomerDocument(e.target.value)}
+                        placeholder="000.000.000-00"
+                        className="mt-1.5 w-full rounded-xl border border-latte bg-cream px-3.5 py-2.5 text-sm text-espresso placeholder:text-muted/70 focus:border-rosegold"
+                      />
+                    </div>
+                  )}
+
                   <div className="flex items-baseline justify-between py-2">
                     <span className="text-xs font-medium text-mocha">
                       Subtotal estimado
@@ -289,9 +314,6 @@ export function BagDrawer({ checkout }: { checkout: CheckoutSettings }) {
                       <span className="tabular-price font-serif text-2xl font-semibold text-espresso">
                         {formatBRL(subtotalInCents)}
                       </span>
-                      <p className="tabular-price text-[11px] text-mocha">
-                        ou {formatBRL(Math.round(subtotalInCents * 0.95))} no Pix
-                      </p>
                     </div>
                   </div>
 
