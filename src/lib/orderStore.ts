@@ -326,12 +326,16 @@ async function nextOrderCode(client: Pick<typeof prisma, "order">): Promise<stri
   throw new Error("Não foi possível gerar um código de pedido");
 }
 
-export interface PosOrderInput {
+export interface PosOrderItemInput {
   variantId: string;
   sizeLabel: string;
   quantity: number;
   /** Valor efetivamente recebido por peça — já com eventual desconto de balcão. */
   unitPriceInCents: number;
+}
+
+export interface PosOrderInput {
+  items: PosOrderItemInput[];
   paymentMethod: PaymentMethod;
   customerName: string;
 }
@@ -339,44 +343,69 @@ export interface PosOrderInput {
 /**
  * Venda presencial: pedido nasce CONFIRMED, estoque é baixado na mesma
  * transação e o recebimento vira evento financeiro. Nunca vende sem estoque.
+ * Se qualquer item falhar, nada é baixado nem criado.
  */
 export async function createPosOrder(
   input: PosOrderInput
 ): Promise<{ code: string; commissionInCents: number }> {
-  if (!Number.isInteger(input.quantity) || input.quantity < 1) {
-    throw new Error("Quantidade inválida");
-  }
-  if (!Number.isInteger(input.unitPriceInCents) || input.unitPriceInCents <= 0) {
-    throw new Error("Valor inválido");
+  if (input.items.length === 0) throw new Error("Carrinho vazio");
+  for (const item of input.items) {
+    if (!Number.isInteger(item.quantity) || item.quantity < 1) {
+      throw new Error("Quantidade inválida");
+    }
+    if (!Number.isInteger(item.unitPriceInCents) || item.unitPriceInCents <= 0) {
+      throw new Error("Valor inválido");
+    }
   }
 
   const code = await nextOrderCode(prisma);
   const settings = await getCommissionSettings();
 
   return prisma.$transaction(async (tx) => {
-    const variant = await tx.productVariant.findUnique({
-      where: { id: input.variantId },
-      include: { product: true },
-    });
-    if (!variant || variant.product.archivedAt) throw new Error("Peça não encontrada");
+    const orderItems: Prisma.OrderItemCreateManyOrderInput[] = [];
+    let totalInCents = 0;
+    let costInCents = 0;
 
-    const stock = await tx.variantStock.findUnique({
-      where: {
-        variantId_sizeLabel: { variantId: variant.id, sizeLabel: input.sizeLabel },
-      },
-    });
-    if (!stock) throw new Error("Tamanho não disponível nesta cor");
+    for (const item of input.items) {
+      const variant = await tx.productVariant.findUnique({
+        where: { id: item.variantId },
+        include: { product: true },
+      });
+      if (!variant || variant.product.archivedAt) throw new Error("Peça não encontrada");
 
-    const decremented = await tx.variantStock.updateMany({
-      where: { id: stock.id, stock: { gte: input.quantity } },
-      data: { stock: { decrement: input.quantity } },
-    });
-    if (decremented.count !== 1) {
-      throw new Error(`Estoque insuficiente: há ${stock.stock} disponível(is)`);
+      const stock = await tx.variantStock.findUnique({
+        where: {
+          variantId_sizeLabel: { variantId: variant.id, sizeLabel: item.sizeLabel },
+        },
+      });
+      if (!stock) {
+        throw new Error(`Tamanho ${item.sizeLabel} indisponível em ${variant.colorName}`);
+      }
+
+      const decremented = await tx.variantStock.updateMany({
+        where: { id: stock.id, stock: { gte: item.quantity } },
+        data: { stock: { decrement: item.quantity } },
+      });
+      if (decremented.count !== 1) {
+        throw new Error(
+          `Estoque insuficiente: ${variant.product.name} · ${variant.colorName} · ${item.sizeLabel} (há ${stock.stock})`
+        );
+      }
+
+      orderItems.push({
+        productId: variant.productId,
+        variantId: variant.id,
+        sizeLabel: item.sizeLabel,
+        quantity: item.quantity,
+        productName: variant.product.name,
+        colorName: variant.colorName,
+        unitPriceInCents: item.unitPriceInCents,
+        unitCostInCents: variant.product.costInCents,
+      });
+      totalInCents += item.unitPriceInCents * item.quantity;
+      costInCents += variant.product.costInCents * item.quantity;
     }
 
-    const totalInCents = input.unitPriceInCents * input.quantity;
-    const costInCents = variant.product.costInCents * input.quantity;
     const commissionInCents = calculateCommission({
       costInCents,
       receivedInCents: totalInCents,
@@ -400,18 +429,7 @@ export async function createPosOrder(
           now,
           graceDaysForChannel(settings, "LOJA")
         ),
-        items: {
-          create: [{
-            productId: variant.productId,
-            variantId: variant.id,
-            sizeLabel: input.sizeLabel,
-            quantity: input.quantity,
-            productName: variant.product.name,
-            colorName: variant.colorName,
-            unitPriceInCents: input.unitPriceInCents,
-            unitCostInCents: variant.product.costInCents,
-          }],
-        },
+        items: { createMany: { data: orderItems } },
         financialEvents: {
           create: [{
             type: "PAYMENT_RECEIVED",
@@ -425,7 +443,7 @@ export async function createPosOrder(
     });
 
     return { code, commissionInCents };
-  }, { timeout: 15_000 });
+  }, { timeout: 30_000 });
 }
 
 export async function setOrderSaleInfo(

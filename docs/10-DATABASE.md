@@ -53,6 +53,9 @@ Detalhes de implementação **não aparecem na tela** — ficam apenas neste doc
   `PostSaleEvent` registra troca/devolução/defeito com motivo, autor e efeitos (estoque, estorno,
   comissão); gera `FinancialEvent` e leva o pedido a `RETURNED`. Migration
   `20261122193620_commission_settings_and_post_sale`.
+- **Carrinho do PDV:** `createPosOrder` recebe `items[]` e grava todos os `OrderItem` de uma vez
+  num pedido só; estoque é baixado item a item na mesma transação e qualquer falha faz rollback.
+  O resumo da tela usa a alíquota vinda de `CommissionSetting`.
 - **PDV:** `/admin/pdv` cria venda presencial com `createPosOrder` (`src/lib/orderStore.ts`):
   pedido `CONFIRMED` com `channel: LOJA`, estoque baixado com `updateMany` condicional
   (`stock >= quantidade`), código `MS-xxxx` gerado fora da transação (evita timeout do Prisma)

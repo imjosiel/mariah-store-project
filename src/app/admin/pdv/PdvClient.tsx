@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Check, Search, ShoppingBag } from "lucide-react";
+import { Check, Plus, Search, ShoppingBag, X } from "lucide-react";
 
 import { formatBRL } from "@/lib/money";
 import { reaisToCents } from "@/domain/money";
@@ -25,6 +25,18 @@ type Product = {
   }>;
 };
 
+type CartItem = {
+  key: string;
+  variantId: string;
+  sizeLabel: string;
+  productName: string;
+  colorName: string;
+  imageUrl: string;
+  unitPriceInCents: number;
+  unitCostInCents: number;
+  quantity: number;
+};
+
 type Payment = "PIX" | "DINHEIRO" | "CARTAO" | "OUTRO";
 
 const PAYMENT_LABEL: Record<Payment, string> = {
@@ -38,7 +50,13 @@ const centsToInput = (cents: number) => (cents / 100).toFixed(2).replace(".", ",
 const input =
   "mt-1 w-full rounded-xl border border-[#E4DED8] bg-white px-3 py-2.5 text-sm text-[#141210] placeholder:text-[#9A918B] focus:border-rosegold";
 
-export function PdvClient({ products }: { products: Product[] }) {
+export function PdvClient({
+  products,
+  commissionBps,
+}: {
+  products: Product[];
+  commissionBps: number;
+}) {
   const [productSlug, setProductSlug] = useState("");
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -48,6 +66,7 @@ export function PdvClient({ products }: { products: Product[] }) {
   const [unitPrice, setUnitPrice] = useState("");
   const [payment, setPayment] = useState<Payment>("PIX");
   const [customerName, setCustomerName] = useState("");
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [message, setMessage] = useState("");
   const [lastCode, setLastCode] = useState("");
   const [saving, setSaving] = useState(false);
@@ -64,9 +83,24 @@ export function PdvClient({ products }: { products: Product[] }) {
       ? unitPriceInCents * qty
       : 0;
   const costInCents = product ? product.costInCents * Math.max(0, qty || 0) : 0;
-  const commissionInCents =
-    totalInCents > 0
-      ? calculateCommission({ costInCents, receivedInCents: totalInCents })
+
+  const cartTotalInCents = cart.reduce(
+    (sum, item) => sum + item.unitPriceInCents * item.quantity,
+    0
+  );
+  const cartCostInCents = cart.reduce(
+    (sum, item) => sum + item.unitCostInCents * item.quantity,
+    0
+  );
+  const displayTotal = cart.length > 0 ? cartTotalInCents : totalInCents;
+  const displayCost = cart.length > 0 ? cartCostInCents : costInCents;
+  const displayCommission =
+    displayTotal > 0
+      ? calculateCommission({
+          costInCents: displayCost,
+          receivedInCents: displayTotal,
+          commissionBps,
+        })
       : 0;
 
   const invalid =
@@ -99,23 +133,65 @@ export function PdvClient({ products }: { products: Product[] }) {
     setLastCode("");
   };
 
+  const addToCart = () => {
+    if (invalid || !variant || !product || unitPriceInCents === null) return;
+    const key = `${variant.id}:${sizeLabel}:${unitPriceInCents}`;
+    const existing = cart.find((item) => item.key === key);
+    const nextQty = (existing?.quantity ?? 0) + qty;
+    if (nextQty > available) {
+      setMessage(`Só há ${available} disponível(is) desse item.`);
+      return;
+    }
+    setCart((prev) =>
+      existing
+        ? prev.map((item) => (item.key === key ? { ...item, quantity: nextQty } : item))
+        : [
+            ...prev,
+            {
+              key,
+              variantId: variant.id,
+              sizeLabel,
+              productName: product.name,
+              colorName: variant.colorName,
+              imageUrl: product.imageUrl,
+              unitPriceInCents,
+              unitCostInCents: product.costInCents,
+              quantity: qty,
+            },
+          ]
+    );
+    setMessage("");
+    setLastCode("");
+    setVariantId("");
+    setSizeLabel("");
+    setQuantity("1");
+  };
+
+  const removeFromCart = (key: string) =>
+    setCart((prev) => prev.filter((item) => item.key !== key));
+
   const submit = async () => {
-    if (invalid || !variant) return;
+    if (cart.length === 0) return;
     setSaving(true);
     setMessage("");
     try {
       const result = await createPosOrderAction({
-        variantId: variant.id,
-        sizeLabel,
-        quantity: qty,
-        unitPriceInCents,
+        items: cart.map((item) => ({
+          variantId: item.variantId,
+          sizeLabel: item.sizeLabel,
+          quantity: item.quantity,
+          unitPriceInCents: item.unitPriceInCents,
+        })),
         paymentMethod: payment,
         customerName,
       });
       setLastCode(result.code);
       setMessage(`Venda registrada como #${result.code}.`);
-      setQuantity("1");
+      setCart([]);
       setCustomerName("");
+      setVariantId("");
+      setSizeLabel("");
+      setQuantity("1");
       if (product) setUnitPrice(centsToInput(product.priceInCents));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível registrar a venda.");
@@ -266,15 +342,15 @@ export function PdvClient({ products }: { products: Product[] }) {
               Total recebido
             </p>
             <p className="tabular-price mt-1 font-serif text-xl font-semibold">
-              {formatBRL(totalInCents)}
+              {formatBRL(displayTotal)}
             </p>
           </div>
           <div>
             <p className="text-[10px] font-semibold tracking-wider text-[#6E6660] uppercase">
-              Sua comissão (10%)
+              Sua comissão ({(commissionBps / 100).toFixed(0)}%)
             </p>
             <p className="tabular-price mt-1 font-serif text-xl font-semibold text-copper">
-              {formatBRL(commissionInCents)}
+              {formatBRL(displayCommission)}
             </p>
           </div>
           <div>
@@ -282,35 +358,114 @@ export function PdvClient({ products }: { products: Product[] }) {
               Parte da loja
             </p>
             <p className="tabular-price mt-1 font-serif text-xl font-semibold">
-              {formatBRL(totalInCents - commissionInCents)}
+              {formatBRL(displayTotal - displayCommission)}
             </p>
           </div>
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
-          {message && (
-            <span
-              className={`flex items-center gap-1.5 text-[11px] font-semibold ${lastCode ? "text-[#2E6B4C]" : "text-[#A8432F]"}`}
-            >
-              {lastCode && <Check className="h-3.5 w-3.5" />}
-              {message}
-            </span>
-          )}
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
           <button
             type="button"
-            onClick={() => void submit()}
+            onClick={addToCart}
             disabled={invalid || saving || products.length === 0}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-[#161311] px-6 py-3 text-xs font-semibold text-cream transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#C0563E]/60 px-5 py-3 text-xs font-semibold text-[#A8432F] transition-colors hover:bg-[#C0563E]/10 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <ShoppingBag className="h-4 w-4" />
-            {saving ? "Registrando..." : "Registrar venda"}
+            <Plus className="h-4 w-4" />
+            Adicionar ao carrinho
           </button>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            {message && (
+              <span
+                className={`flex items-center gap-1.5 text-[11px] font-semibold ${lastCode ? "text-[#2E6B4C]" : "text-[#A8432F]"}`}
+              >
+                {lastCode && <Check className="h-3.5 w-3.5" />}
+                {message}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => void submit()}
+              disabled={cart.length === 0 || saving}
+              className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-[#161311] px-6 py-3 text-xs font-semibold text-cream transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ShoppingBag className="h-4 w-4" />
+              {saving
+                ? "Registrando..."
+                : `Registrar venda${cart.length > 0 ? ` (${cart.reduce((sum, item) => sum + item.quantity, 0)})` : ""}`}
+            </button>
+          </div>
         </div>
 
         {products.length === 0 && (
           <p className="mt-3 text-[11px] text-[#A8432F]">
             Cadastre uma peça antes de registrar vendas.
           </p>
+        )}
+      </div>
+
+      <div className={`${PANEL} p-5 sm:p-6`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="font-serif text-xl font-semibold">Carrinho</h2>
+            <p className="mt-0.5 text-[11px] text-[#6E6660]">
+              {cart.length === 0
+                ? "Nenhum item adicionado ainda."
+                : `${cart.reduce((sum, item) => sum + item.quantity, 0)} item(ns) · ${formatBRL(cartTotalInCents)}`}
+            </p>
+          </div>
+          {cart.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setCart([])}
+              className="cursor-pointer rounded-full border border-[#E4DED8] px-4 py-2 text-[11px] font-semibold text-[#4A4440] transition-colors hover:border-[#A8432F] hover:text-[#A8432F]"
+            >
+              Limpar
+            </button>
+          )}
+        </div>
+
+        {cart.length > 0 && (
+          <ul className="mt-4 space-y-2">
+            {cart.map((item) => (
+              <li
+                key={item.key}
+                className="flex items-center gap-3 rounded-xl border border-[#EDE3D8] bg-[#FDFAF8] p-2"
+              >
+                <div className="relative h-14 w-12 shrink-0 overflow-hidden rounded-lg bg-[#F7F4F1]">
+                  {item.imageUrl && (
+                    <Image
+                      src={item.imageUrl}
+                      alt=""
+                      fill
+                      sizes="48px"
+                      className="object-contain"
+                      unoptimized
+                    />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-semibold text-[#141210]">
+                    {item.productName}
+                  </p>
+                  <p className="text-[10px] text-[#6E6660]">
+                    {item.colorName} · Tam. {item.sizeLabel} · {item.quantity}×{" "}
+                    {formatBRL(item.unitPriceInCents)}
+                  </p>
+                </div>
+                <span className="tabular-price text-xs font-semibold text-[#141210]">
+                  {formatBRL(item.unitPriceInCents * item.quantity)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeFromCart(item.key)}
+                  aria-label={`Remover ${item.productName}`}
+                  className="cursor-pointer rounded-full p-1 text-[#6E6660] transition-colors hover:text-[#A8432F]"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 

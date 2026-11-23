@@ -2,14 +2,19 @@
 export const instant = false;
 
 import { getAdminProducts } from "@/lib/productStore";
+import { getCommissionSettings } from "@/lib/commissionSettings";
 
 import { PdvClient } from "./PdvClient";
 
 export default async function PdvPage() {
-  const products = await getAdminProducts();
+  const [products, settings] = await Promise.all([
+    getAdminProducts(),
+    getCommissionSettings(),
+  ]);
 
   return (
     <PdvClient
+      commissionBps={settings.commissionBps}
       products={products
         .filter((product) => !product.archived)
         .map((product) => ({

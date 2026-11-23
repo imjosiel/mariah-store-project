@@ -97,10 +97,12 @@ export async function refreshCommissionsAction(): Promise<void> {
 }
 
 export async function createPosOrderAction(input: {
-  variantId: string;
-  sizeLabel: string;
-  quantity: number;
-  unitPriceInCents: number;
+  items: Array<{
+    variantId: string;
+    sizeLabel: string;
+    quantity: number;
+    unitPriceInCents: number;
+  }>;
   paymentMethod: "PIX" | "DINHEIRO" | "CARTAO" | "OUTRO";
   customerName: string;
 }): Promise<{ code: string; commissionInCents: number }> {

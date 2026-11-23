@@ -103,6 +103,10 @@ com motivo obrigatório, quem autorizou e três efeitos escolhidos na hora: devo
 estornar valor e reverter comissão. O pedido passa a `RETURNED` e cada efeito gera seu
 `FinancialEvent`. Não existe prazo automático para cortesia — a dona decide caso a caso.
 
+O PDV tem carrinho: vários itens (peça/cor/tamanho/valor recebido) entram numa única venda.
+Se qualquer item não tiver estoque, a transação inteira é revertida — nenhuma baixa, nenhum
+pedido. Total, custo, margem e comissão são somados sobre todos os itens.
+
 A venda presencial entra por `/admin/pdv`: escolhe peça, cor, tamanho, quantidade, valor
 efetivamente recebido (com desconto de balcão) e forma de pagamento. O pedido nasce
 `CONFIRMED`, o estoque é baixado na mesma transação (nunca vende sem estoque) e um evento
