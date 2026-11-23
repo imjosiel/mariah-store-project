@@ -13,6 +13,7 @@ import { PANEL } from "@/components/admin/AdminShell";
 type Product = {
   slug: string;
   name: string;
+  categoryName: string;
   imageUrl: string;
   priceInCents: number;
   costInCents: number;
@@ -40,6 +41,7 @@ const input =
 export function PdvClient({ products }: { products: Product[] }) {
   const [productSlug, setProductSlug] = useState("");
   const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [variantId, setVariantId] = useState("");
   const [sizeLabel, setSizeLabel] = useState("");
   const [quantity, setQuantity] = useState("1");
@@ -78,9 +80,13 @@ export function PdvClient({ products }: { products: Product[] }) {
     unitPriceInCents <= 0;
 
   const term = query.trim().toLowerCase();
-  const filtered = term
-    ? products.filter((item) => item.name.toLowerCase().includes(term))
-    : products;
+  const categories = Array.from(new Set(products.map((item) => item.categoryName))).sort((a, b) =>
+    a.localeCompare(b, "pt-BR")
+  );
+  const filtered = products.filter((item) => {
+    if (categoryFilter && item.categoryName !== categoryFilter) return false;
+    return !term || item.name.toLowerCase().includes(term);
+  });
 
   const selectProduct = (slug: string) => {
     const next = products.find((item) => item.slug === slug);
@@ -314,6 +320,19 @@ export function PdvClient({ products }: { products: Product[] }) {
             <h2 className="font-serif text-xl font-semibold">Escolha a peça</h2>
             <p className="mt-0.5 text-[11px] text-[#6E6660]">Toque na peça para selecioná-la.</p>
           </div>
+          <select
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+            aria-label="Filtrar por categoria"
+            className="min-w-[180px] flex-1 rounded-xl border border-[#E4DED8] bg-white px-3 py-2 text-xs font-semibold text-[#4A4440] sm:max-w-xs"
+          >
+            <option value="">Todas as categorias</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
           <label className="flex items-center gap-2 rounded-xl border border-[#E4DED8] bg-white px-3 py-2">
             <Search className="h-4 w-4 text-[#6E6660]" />
             <input
