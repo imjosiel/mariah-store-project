@@ -130,6 +130,24 @@ regra desta seção; por isso o repasse deve usar **`fixedValue`** com o valor e
 centavos calculado aqui (10% da margem), nunca percentual do total. Taxas continuam
 fora da base da comissão.
 
+### Checkout com gateway (preparado, desligado por padrão)
+
+A vitrine pode oferecer **Pix com QR Code (Asaas)** e/ou **WhatsApp (Pix manual)**.
+O super admin escolhe em `/admin/financeiro/regras` quais estão ligados e qual é o preferencial.
+**Defaults: Pix desligado, WhatsApp ligado, preferencial WhatsApp** — ou seja, nada muda na
+vitrine até você configurar e ligar o gateway. Mesmo ligado, o Pix some se faltarem
+`ASAAS_API_KEY` ou `ASAAS_WALLET_ID`. Use `ASAAS_BASE_URL` apontando para o Sandbox até homologar.
+
+Na criação da cobrança: `billingType: PIX`, `externalReference = código MS-xxxx`, e
+`split: [{ walletId, fixedValue: comissão em reais }]` — valor fixo calculado aqui, nunca
+percentual do líquido. O webhook em `/api/webhooks/asaas` valida o header
+`asaas-access-token` contra `ASAAS_WEBHOOK_TOKEN`, usa o `id` do evento para idempotência e
+traduz: `PAYMENT_SPLIT_DONE` → comissão paga; `PAYMENT_RECEIVED` → recebimento;
+`PAYMENT_REFUNDED` / `PAYMENT_PARTIALLY_REFUNDED` → estorno da venda e do split.
+
+Não existem subcontas nesta loja: há um único recebedor, identificado pelo `walletId`.
+Subcontas são necessárias apenas no projeto de marketplace de personais (conta-pai PJ).
+
 ### Simulação de custos (congelada em 2026-11-23, catálogo real)
 
 O gateway cobra sobre o **valor bruto da cobrança**, nunca sobre o lucro. Taxas públicas

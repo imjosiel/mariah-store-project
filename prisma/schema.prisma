@@ -97,6 +97,21 @@ model CommissionSetting {
   updatedByEmail  String?
 }
 
+enum CheckoutMethod {
+  PIX_GATEWAY
+  WHATSAPP
+}
+
+/** Checkout da vitrine. Desligado por padrão até homologar e configurar o gateway. */
+model CheckoutSetting {
+  id              String         @id @default(cuid())
+  pixGatewayEnabled Boolean       @default(false)
+  whatsappEnabled   Boolean       @default(true)
+  preferredMethod   CheckoutMethod @default(WHATSAPP)
+  updatedAt         DateTime      @updatedAt
+  updatedByEmail    String?
+}
+
 enum PostSaleType {
   TROCA
   DEVOLUCAO
@@ -179,6 +194,7 @@ model Order {
   cancelledAt            DateTime?
   cancelReason           String?
   stockRestoredAt        DateTime?        // idempotência do estorno no cancelamento
+  gatewayPaymentId       String?          // id da cobrança no Asaas (quando houver)
   nfNumber               String?          // preenchido manualmente após emissão na NFF
   cfop                   String           @default("5.102") // 5.101 produção própria | 5.102 revenda
   commissionBps          Int              @default(1000)    // 10%

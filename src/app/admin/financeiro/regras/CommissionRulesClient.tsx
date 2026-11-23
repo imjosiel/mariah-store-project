@@ -3,19 +3,38 @@
 import { useState } from "react";
 import Link from "next/link";
 
+import type { CheckoutMethod } from "@prisma/client";
+
 import type { CommissionSettings } from "@/domain/commission";
 import { updateCommissionSettingsAction } from "@/order-actions";
+import { updateCheckoutSettingsAction } from "@/checkout-actions";
+import type { CheckoutSettings } from "@/lib/checkoutSettings";
 import { PANEL } from "@/components/admin/AdminShell";
 
 const input =
   "tabular-price mt-1 w-full rounded-xl border border-[#E4DED8] bg-white px-3 py-2.5 text-sm text-[#141210] focus:border-rosegold";
 
-export function CommissionRulesClient({ settings }: { settings: CommissionSettings }) {
+export function CommissionRulesClient({
+  settings,
+  checkout,
+  gatewayConfigured,
+}: {
+  settings: CommissionSettings;
+  checkout: CheckoutSettings;
+  gatewayConfigured: boolean;
+}) {
   const [onlineDays, setOnlineDays] = useState(String(settings.onlineGraceDays));
   const [storeDays, setStoreDays] = useState(String(settings.storeGraceDays));
   const [percent, setPercent] = useState((settings.commissionBps / 100).toFixed(1).replace(".", ","));
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [pixEnabled, setPixEnabled] = useState(checkout.pixGatewayEnabled);
+  const [whatsappEnabled, setWhatsappEnabled] = useState(checkout.whatsappEnabled);
+  const [preferredMethod, setPreferredMethod] = useState<CheckoutMethod>(
+    checkout.preferredMethod
+  );
+  const [checkoutMessage, setCheckoutMessage] = useState("");
+  const [checkoutSaving, setCheckoutSaving] = useState(false);
 
   const bps = Math.round(Number(percent.replace(",", ".")) * 100);
   const invalid =
@@ -45,6 +64,35 @@ export function CommissionRulesClient({ settings }: { settings: CommissionSettin
       setMessage("Não foi possível salvar.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveCheckout = async () => {
+    if (pixEnabled && !gatewayConfigured) {
+      setCheckoutMessage("Configure ASAAS_API_KEY e ASAAS_WALLET_ID antes de ligar o Pix.");
+      return;
+    }
+    if (!pixEnabled && !whatsappEnabled) {
+      setCheckoutMessage("Deixe ao menos uma forma de pagamento ligada.");
+      return;
+    }
+    if (pixEnabled && !whatsappEnabled && preferredMethod === "WHATSAPP") {
+      setCheckoutMessage("Escolha uma forma disponível como preferencial.");
+      return;
+    }
+    setCheckoutSaving(true);
+    setCheckoutMessage("");
+    try {
+      await updateCheckoutSettingsAction({
+        pixGatewayEnabled: pixEnabled,
+        whatsappEnabled,
+        preferredMethod,
+      });
+      setCheckoutMessage("Checkout atualizado.");
+    } catch {
+      setCheckoutMessage("Não foi possível salvar o checkout.");
+    } finally {
+      setCheckoutSaving(false);
     }
   };
 
@@ -103,6 +151,67 @@ export function CommissionRulesClient({ settings }: { settings: CommissionSettin
           </button>
           {message && (
             <span className="text-[11px] font-semibold text-[#A8432F]">{message}</span>
+          )}
+        </div>
+      </div>
+
+      <div className={`${PANEL} p-5 sm:p-6`}>
+        <h2 className="font-serif text-xl font-semibold">Checkout da vitrine</h2>
+        <p className="mt-0.5 text-[11px] text-[#6E6660]">
+          O Pix via gateway só aparece para a cliente se as credenciais estiverem configuradas.
+          Fora isso, a loja continua como hoje.
+        </p>
+
+        <div className="mt-4 space-y-3">
+          <label className="flex items-center gap-2 text-xs text-[#4A4440]">
+            <input
+              type="checkbox"
+              checked={whatsappEnabled}
+              onChange={(event) => setWhatsappEnabled(event.target.checked)}
+              className="h-4 w-4 accent-copper"
+            />
+            Finalizar pelo WhatsApp
+          </label>
+          <label className="flex items-center gap-2 text-xs text-[#4A4440]">
+            <input
+              type="checkbox"
+              checked={pixEnabled}
+              onChange={(event) => setPixEnabled(event.target.checked)}
+              className="h-4 w-4 accent-copper"
+            />
+            Pix com QR Code (Asaas)
+          </label>
+          {!gatewayConfigured && (
+            <p className="text-[10px] text-[#A8432F]">
+              Credenciais do Asaas ausentes — o Pix não aparecerá na vitrine mesmo marcado.
+            </p>
+          )}
+          <label className="block">
+            <span className="text-[10px] font-semibold tracking-wider text-[#4A4440] uppercase">
+              Forma preferencial
+            </span>
+            <select
+              value={preferredMethod}
+              onChange={(event) => setPreferredMethod(event.target.value as CheckoutMethod)}
+              className={input}
+            >
+              {whatsappEnabled && <option value="WHATSAPP">WhatsApp</option>}
+              {pixEnabled && <option value="PIX_GATEWAY">Pix com QR Code</option>}
+            </select>
+          </label>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => void saveCheckout()}
+            disabled={checkoutSaving}
+            className="cursor-pointer rounded-full bg-[#161311] px-6 py-2.5 text-xs font-semibold text-cream transition-transform hover:-translate-y-0.5 disabled:opacity-50"
+          >
+            {checkoutSaving ? "Salvando..." : "Salvar checkout"}
+          </button>
+          {checkoutMessage && (
+            <span className="text-[11px] font-semibold text-[#A8432F]">{checkoutMessage}</span>
           )}
         </div>
       </div>

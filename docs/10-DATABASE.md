@@ -47,6 +47,12 @@ npm run verify
 
 Detalhes de implementação **não aparecem na tela** — ficam apenas neste documento e no `docs/07`. A interface fala de peça, cor, tamanho e preço; não menciona R2, upload, modelo de IA, "regra de ouro" nem prazos de comissão. Isso evita vazar arquitetura para quem usa o ERP e evita textos desatualizados quando a infra muda.
 - Cota por loja em `StorageSetting` (padrão **1 GB**), ajustável pelo super admin em `/admin/armazenamento`. O upload soma os tamanhos dos objetos via `ListObjectsV2` e bloqueia se estourar o limite. As 11 imagens antigas em `public/products/` seguem como fallback.
+- **Checkout/Asaas:** `CheckoutSetting` (singleton, migration `20261123171622_checkout_settings`)
+  guarda `pixGatewayEnabled` (default `false`), `whatsappEnabled` (default `true`) e
+  `preferredMethod` (default `WHATSAPP`). `Order.gatewayPaymentId` guarda a cobrança. Cliente em
+  `src/lib/asaas.ts`, action em `src/checkout-actions.ts`, webhook em
+  `/api/webhooks/asaas`. Credenciais ficam só em variáveis de ambiente (`.env.example`);
+  nunca no banco nem na interface.
 - **Regras e pós-venda:** `CommissionSetting` (singleton) guarda `onlineGraceDays`,
   `storeGraceDays` e `commissionBps`, editáveis só pelo super admin em
   `/admin/financeiro/regras`; `confirmOrderInDb` e `createPosOrder` leem esses valores na criação.

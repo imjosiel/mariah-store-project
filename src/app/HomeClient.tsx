@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { Category, Product } from "@/types/store";
+import type { CheckoutSettings } from "@/lib/checkoutSettings";
 import { HeroOrbitalShowcase } from "@/components/HeroOrbitalShowcase";
 import { EditorialCatalog } from "@/components/EditorialCatalog";
 import { BrandEssenceSection } from "@/components/BrandEssenceSection";
@@ -10,9 +11,11 @@ import { BagDrawer } from "@/components/BagDrawer";
 export function HomeClient({
   products,
   categories,
+  checkout,
 }: {
   products: Product[];
   categories: Category[];
+  checkout: CheckoutSettings;
 }) {
   const heroProducts = useMemo(
     () => products.filter((p) => p.featuredInHero),
@@ -52,7 +55,7 @@ export function HomeClient({
 
       <BrandEssenceSection />
 
-      <BagDrawer />
+      <BagDrawer checkout={checkout} />
     </main>
   );
 }

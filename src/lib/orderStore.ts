@@ -595,6 +595,20 @@ export async function markOrderPaid(code: string): Promise<void> {
   });
 }
 
+export async function setGatewayPayment(
+  code: string,
+  paymentId: string,
+  commissionInCents?: number
+): Promise<void> {
+  await prisma.order.update({
+    where: { code },
+    data: {
+      gatewayPaymentId: paymentId,
+      ...(commissionInCents !== undefined ? { commissionInCents } : {}),
+    },
+  });
+}
+
 export async function setNfNumberInDb(code: string, nfNumber: string): Promise<void> {
   await prisma.order.update({
     where: { code },
